@@ -4,8 +4,8 @@ A Transfer Batch is settled gross: each Transfer settles on its own, and only if
 
 ## Considered Options
 
-- **Net settlement** (apply the whole batch if every Account's net position stays ≥ $0): rejected. Once any Account nets negative, choosing which Transfers to drop becomes a subset-selection optimisation problem with no simple, fair answer.
-- **All-or-nothing batches**: rejected. One bad line would block a Company's entire day.
+- **Net settlement** (apply the whole batch if every Account's net position stays ≥ $0): rejected. Once any Account nets negative, choosing which Transfers to drop becomes a subset-selection optimisation problem with no simple, fair answer given the transfers lack transfer dates or priority number.
+- **All-or-nothing batches**: rejected. One bad line would block a Company's entire batch.
 
 ## Consequences
 

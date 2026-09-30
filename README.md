@@ -38,17 +38,18 @@ dotnet test
 ## Decisions & Assumptions
 
 - Transfers are settled gross (one at a time and only if the sender holds the full amount at that moment) because
-  net settlement turns into an unfair subset-selection problem once any Account nets negative (see [ADR 0001](docs/adr/0001-gross-multi-pass-settlement.md))
+  net settlement (summing all sent and received for account at once) turns into an complex and potentially unfair subset-selection problem of which transactions to reject once any Account nets negative (see [ADR 0001](docs/adr/0001-gross-multi-pass-settlement.md)); simpler gross method chosen due to time constraints.
 - Console batch job, because the brief asks for a system that loads the Balances and then accepts a day's Transfers. The two files are passed as arguments.
 - Persistance and provision of account balance in csv file for simplicity. Repository pattern used to easily swap in SQLite database.
 - Simplified CQRS pattern used to encapulate application logic with single responsbility; no need for a mediator pattern yet.
-- Dependencies are wired in a `Microsoft.Extensions.DependencyInjection` container in `Program.cs`, the composition root.
 
 ## Known limitations
 
 - Running the same Transfer Batch again settles it again (no idempotency). Can be achieved by persisting batch status but deemed beyond scope of exercise.
 - One Company only.
-- Outcomes depend on the order of the Transfers in the file.
+- Gross settlement in order means that:
+  - Outcomes depend on the order of the Transfers in the file.
+  - Rejects a cycle of Transfers that no sender can cover on its own, even when netting would settle it and move money. (see `when_underfunded_accounts_pay_each_other_unequal_amounts_in_a_cycle` in [TransferBatchSpec.cs](tests/Bank.Domain.Specs/TransferBatchSpec.cs)).
 
 ## Design
 

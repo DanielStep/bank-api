@@ -232,6 +232,30 @@ public class TransferBatchSpec
         }
     }
 
+    public class when_underfunded_accounts_pay_each_other_unequal_amounts_in_a_cycle
+    {
+        readonly SettlementResult result = Settle(
+            [AnAccount("1111111111111111", 0.00m), AnAccount("2222222222222222", 50.00m)],
+            [
+                ATransfer(1, "1111111111111111", "2222222222222222", 100.00m),
+                ATransfer(2, "2222222222222222", "1111111111111111", 150.00m)
+            ]);
+
+        [Fact]
+        public void it_rejects_both_for_insufficient_funds()
+        {
+            At(result, 1).Reason.ShouldBe(RejectionReason.InsufficientFunds);
+            At(result, 2).Reason.ShouldBe(RejectionReason.InsufficientFunds);
+        }
+
+        [Fact]
+        public void it_leaves_every_balance_unchanged()
+        {
+            BalanceOf(result, "1111111111111111").ShouldBe(0.00m);
+            BalanceOf(result, "2222222222222222").ShouldBe(50.00m);
+        }
+    }
+
     public class when_a_pass_settles_something
     {
         readonly SettlementResult result = Settle(
