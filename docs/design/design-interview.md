@@ -125,7 +125,7 @@ Related files:
 |---|---|---|
 | Q17b | Using the sample balances file as the working file | Recommended: the **csproj copies `mable_account_balances.csv` into the build output** (`CopyToOutputDirectory=PreserveNewest`), and the repository reads and writes that copy. The repo's file is never touched, and `dotnet clean` resets it. |
 | Q18 | Which rules Reject straight away | Recommended: `UnknownSendingAccount`, `UnknownReceivingAccount`, `SameAccount` and `NonPositiveAmount` are **Rejected on pass 1 and never retried**. Only `InsufficientFunds` Defers, and a Transfer still Deferred at the end is Rejected with `InsufficientFunds`. |
-| Q19 | Where the positive-amount rule lives | Recommended: **`Money` is non-negative.** The parser lets any sign through, and the domain `Transfer.Create(...)` returns a Rejected Transfer (`NonPositiveAmount`) for an amount ≤ 0. |
+| Q19 | Where the positive-amount rule lives | Recommended: **`Money` is non-negative.** The parser lets any sign through, and the domain `Transfer.Create(...)` returns a Rejected Transfer (`NonPositiveAmount`) for an amount ≤ 0. The parser allows any sign because of Q4: `-5.00` is well-formed CSV that breaks a business rule, so only that Transfer is Rejected rather than the whole file returning 400. **Amended by Q27.** |
 | Q20 | Response shape | Recommended; example below. |
 | Q23 | Spec projects | Recommended; list below. |
 
@@ -166,6 +166,12 @@ Related files:
 - **Net**: sum each Account's incoming and outgoing Transfers across the batch, and apply everything at once if every net position stays ≥ $0.
 - **Example:** A (0) → B 100 and B (0) → A 100 are both Rejected under gross settlement but both Settle under net settlement.
 - **Why not net:** once any Account nets negative, choosing which Transfers to drop is a subset-selection optimisation problem with no simple, fair answer. Real systems do both: RITS settles gross in real time, and BECS direct entry settles on a deferred net basis. Confirm those details before quoting them.
+
+### Round 5: domain model review
+
+| # | Question | Decision |
+|---|---|---|
+| Q27 | How a Rejected Transfer holds a negative amount | Review found that Q19 couldn't be built: a Transfer's amount was `Money` (≥ 0), so `Transfer.Create` had no way to hold `-5.00` to reject and report it. User proposed letting `Money` be negative; that was set aside because it removes the type's guarantee that amounts and Balances are never negative, and replaces it with extra guards in `Account` (amount > 0 on withdrawals and deposits, opening Balance ≥ 0). Final: **`Money` stays ≥ 0. A Transfer keeps the requested amount as a `decimal` of any sign, owns its status, and only creates `Money` once the amount is known to be positive.** `Settle` skips Transfers already Rejected at creation. |
 
 ## Worked check: sample files
 

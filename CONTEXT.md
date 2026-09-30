@@ -41,5 +41,5 @@ A Transfer that could not be settled yet and will be retried later in the same S
 _Avoid_: Pending, queued, failed
 
 **Rejected**:
-A Transfer that Settlement has finished with without moving any money, together with the reason.
+A Transfer that will never move any money, together with the reason it was refused.
 _Avoid_: Failed, declined

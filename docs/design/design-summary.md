@@ -31,10 +31,15 @@ spec/Bank.Api.Specs/
 
 - **`AccountNumber`** (value object): exactly 16 digits, stored as a string.
 - **`Money`** (value object): non-negative, at most 2 decimal places, single currency (AUD assumed).
-- **`Account`** (entity): has an `AccountNumber` and a balance. It takes money in and out, and refuses any withdrawal that would take the balance below $0.
-- **`Transfer`**: has a from Account number, a to Account number, an amount and a line number. It's created through `Transfer.Create(...)`, which returns a Transfer that's already **Rejected** (`NonPositiveAmount`) when the amount is ≤ 0.
+- **`Account`** (entity): has an `AccountNumber` and a balance (`Money`, so never negative). It takes money in and out, and refuses any withdrawal that would take the balance below $0.
+- **`Transfer`**: has a from Account number, a to Account number, a requested amount, a line number and a status.
+  - The **requested amount** is a `decimal` of any sign, exactly as the Company wrote it, so a Rejected Transfer can always report it.
+  - `Transfer.Create(...)` sets the status to **Rejected** (`NonPositiveAmount`) when the requested amount is ≤ 0.
+  - Otherwise the Transfer also holds the amount as `Money`. That `Money` is only created once the amount is known to be positive, so it can't fail.
+  - The Transfer owns its status; `Settle` moves it between Deferred, Settled and Rejected.
 - **`TransferBatch`**: the Transfers in submission order. `Settle(accounts)` does gross, multi-pass settlement ([ADR 0001](../adr/0001-gross-multi-pass-settlement.md)):
   - **Pass 1** walks the Transfers in order.
+    - Already Rejected at creation → skipped, and reported with the other Rejected Transfers.
     - Unknown sending Account, unknown receiving Account, or the same Account on both sides → **Rejected** straight away, never retried.
     - The sender is short of funds → **Deferred**.
     - Otherwise → **Settled**.
