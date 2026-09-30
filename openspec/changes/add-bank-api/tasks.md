@@ -38,12 +38,12 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
   - a blank line in the middle
   - Also cover: every malformed line reported; an empty file and a file holding only a line ending each give one error on line 1.
   - Verify: the `when_the_file_is_malformed` contexts pass.
-- [ ] 2.4 Spec then build `AccountsLock` (D7) and `SettleTransferBatchCommand` + handler + `SettleTransferBatchOutcome` (D6), against an in-memory `IAccountRepository` fake. Cover:
+- [x] 2.4 Spec then build `SettleTransferBatchCommand` + handler + `SettleTransferBatchOutcome` (D6), against an in-memory `IAccountRepository` fake. The handler wraps `GetAll` through `SaveAll` in a plain `lock` (D7). Cover:
   - a malformed CSV returns an outcome with `Errors` and no `Result`, and never calls `SaveAll`;
   - a well-formed CSV maps line → Position and from/to → Sending/Receiving Account, calls `Settle`, saves the resulting Accounts once, and returns an outcome with the `Result` and no `Errors`.
-  - Don't re-spec the settlement rules.
+  - Don't re-spec the settlement rules, and don't spec the lock here (task 4.4 covers it).
   - Verify: the `SettleTransferBatchHandlerSpec` contexts pass.
-- [ ] 2.5 Spec then build the get-accounts query + handler: it returns the fake's Accounts in order and takes the lock (D7). Verify: the `GetAccountsHandlerSpec` contexts pass and all `Bank.Application.Specs` pass.
+- [x] 2.5 Spec then build the get-accounts query + handler: it returns the fake's Accounts in order. Verify: the `GetAccountsHandlerSpec` contexts pass and all `Bank.Application.Specs` pass.
 
 ## 3. Data
 
@@ -58,7 +58,7 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
 
 ## 4. Api and README
 
-- [ ] 4.1 Create `src/Bank.Api` (web, → Application and Data) with `appsettings.json` `Urls` = `http://localhost:5080`, no `launchSettings.json` and no HTTPS redirection (D11). Wire up the DI (repository on `AppContext.BaseDirectory`, `AccountsLock`, handlers) and the startup `GetAll()` check (D10). Create `spec/Bank.Api.Specs` with `Microsoft.AspNetCore.Mvc.Testing` and the temporary-file factory (D13), and add both to `BankApi.slnx`. Verify: `dotnet build` succeeds and `src/Bank.Api/bin/Debug/net10.0/mable_account_balances.csv` exists.
+- [ ] 4.1 Create `src/Bank.Api` (web, → Application and Data) with `appsettings.json` `Urls` = `http://localhost:5080`, no `launchSettings.json` and no HTTPS redirection (D11). Wire up the DI (repository on `AppContext.BaseDirectory`, handlers) and the startup `GetAll()` check (D10). Create `spec/Bank.Api.Specs` with `Microsoft.AspNetCore.Mvc.Testing` and the temporary-file factory (D13), and add both to `BankApi.slnx`. Verify: `dotnet build` succeeds and `src/Bank.Api/bin/Debug/net10.0/mable_account_balances.csv` exists.
 - [ ] 4.2 Spec then build `GET /accounts` (D12), covering the `bank-api` spec's balance scenarios:
   - opening Balances in file order as a JSON array of `accountNumber` strings and `balance` numbers;
   - leading zeros kept;

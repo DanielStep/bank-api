@@ -139,7 +139,7 @@ How `Settle` runs:
   2. Map the rows to domain Transfers, so the CSV never reaches the domain.
   3. Load the Accounts, call `batch.Settle(accounts)` with the `Accounts` from the repository, then save.
   4. Return the `SettlementResult`.
-  - A `SemaphoreSlim` makes sure only one settlement runs at a time.
+  - A plain C# `lock` around load, settle and save makes sure only one settlement runs at a time. The get-accounts query takes no lock.
 - **Get-accounts query + handler**: returns the current balances.
 
 ## Data
@@ -193,6 +193,7 @@ How `Settle` runs:
   - Re-posting a file settles it again (no idempotency).
   - One Company only.
   - One settlement runs at a time.
+  - A `GET /accounts` that arrives while a settlement is writing the balances file can fail.
   - Outcomes depend on file order (see ADR 0001).
 
 ## Delivery plan

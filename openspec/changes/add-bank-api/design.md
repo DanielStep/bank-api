@@ -58,11 +58,12 @@ Both CSV readers (the Transfer parser and the balances file) work the same way:
 - *Why plain classes:* simpler to read than abstract records with sealed subtypes and a `switch`, in line with D1 and D4.
 - The command carries the CSV text as a `string`. The endpoint reads the uploaded file with a `StreamReader`, so the Application layer never sees `IFormFile`.
 
-### D7. One lock for every read and write of the balances file
-The single `SemaphoreSlim(1, 1)` is registered as a singleton wrapper (`AccountsLock`) and injected into both handlers.
-- The settle handler holds it from `GetAll` through `SaveAll`.
-- The get-accounts handler holds it for `GetAll`, so it never reads a balances file that is half written.
-- *Alternative:* no lock on the query. That is simpler, but a `GET` during `SaveAll` could see a truncated file and fail.
+### D7. A plain `lock` in the settle handler
+`SettleTransferBatchHandler` holds a `private static readonly object` and wraps `GetAll` through `SaveAll` in a C# `lock` statement, so only one Settlement runs at a time and none of its changes is lost. The code is synchronous, so `lock` is enough and no `SemaphoreSlim` is needed.
+- The get-accounts handler takes no lock.
+- The lock has no Application spec of its own. The Api's "Two uploads arrive together" spec (task 4.4) proves it.
+- *Why:* the user chose the simplest form that still meets "One Settlement runs at a time", over a registered `AccountsLock` wrapper shared by both handlers.
+- *Trade-off:* a `GET /accounts` that lands during `SaveAll` could read a half-written file and fail with 500. This is rare, and the README lists it as a known limitation.
 
 ### D8. FileAccountRepository reads on every call, fails loudly and never caches
 - `GetAll()` reads and parses the whole file each time. It builds `Accounts`, which refuses a duplicate number.
