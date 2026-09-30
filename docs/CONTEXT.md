@@ -1,13 +1,13 @@
 # Banking
 
-A simple banking service that holds one company's customer account balances and applies the day's transfers that the company submits.
+A simple banking batch job that loads one company's customer account balances and applies the day's transfers that the company submits.
 
 ## Language
 
 ### Accounts
 
 **Company**:
-The business that holds accounts for its customers and submits their transfers. The service serves exactly one Company.
+The business that holds accounts for its customers and submits their transfers. The job serves exactly one Company.
 _Avoid_: Client, tenant
 
 **Account**:

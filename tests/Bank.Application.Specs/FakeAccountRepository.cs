@@ -2,7 +2,6 @@ using Bank.Domain;
 
 namespace Bank.Application.Specs;
 
-// Holds the Accounts in memory and records what the handler saves.
 class FakeAccountRepository : IAccountRepository
 {
     private readonly Accounts accounts;

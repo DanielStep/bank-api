@@ -7,7 +7,6 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="4.0.1" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bank.Api\Bank.Api.csproj" />
+    <ProjectReference Include="..\..\src\Bank.Cli\Bank.Cli.csproj" />
   </ItemGroup>
 
   <ItemGroup>

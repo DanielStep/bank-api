@@ -63,7 +63,6 @@ public static class TransferCsvParser
         foreach (var line in text.Split('\n'))
             lines.Add(line.EndsWith('\r') ? line.Substring(0, line.Length - 1) : line);
 
-        // The file's final line ending leaves one empty line at the end.
         if (lines[lines.Count - 1] == "")
             lines.RemoveAt(lines.Count - 1);
 

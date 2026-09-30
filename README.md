@@ -1,6 +1,6 @@
-# Bank API
+# Bank Settlement
 
-A banking service for one Company. It holds the Company's Account Balances and settles each day's Transfer Batch, uploaded as a CSV file, so that no Account ever goes below $0.
+A console batch job for one Company. It loads the Company's Account Balances from one CSV file, settles the day's Transfer Batch from another, and writes the closing Balances back, so that no Account ever goes below $0.
 
 Built with .NET 10
 
@@ -11,20 +11,23 @@ Built with .NET 10
 
 ## Run it
 
-From the repo root:
+From the repo root, pass the balances file and then the Transfer Batch file:
 
 ```sh
-dotnet run --project src/Bank.Api
+dotnet run --project src/Bank.Cli -- mable_account_balances.csv mable_transactions.csv
 ```
 
-The service listens on `http://localhost:5080`, with nothing to configure. In a second terminal, from the repo root, upload the sample Transfer Batch and then read the Balances:
+There is nothing to configure. The job prints a JSON report of the Settled Transfers, the Rejected Transfers with their Rejection Reasons, and the closing Balances. It then writes the closing Balances to the balances file and prints that file. It exits with 0.
+
+A malformed Transfer Batch file prints line-numbered errors, exits with 1 and changes no Balance. So does a malformed balances file, a missing file or the wrong number of arguments.
+
+## Resetting the Balances
+
+The job overwrites the balances file it is given, so running it on the sample changes `mable_account_balances.csv` in the repo, and running it again settles from the new Balances. The specs never read or write that file. To go back to the opening Balances:
 
 ```sh
-curl -F file=@mable_transactions.csv http://localhost:5080/transfer-batches
-curl http://localhost:5080/accounts
+git checkout mable_account_balances.csv
 ```
-
-The upload returns the Settled Transfers, the Rejected Transfers with their Rejection Reasons, and the closing Balances. A malformed CSV returns 400 with line-numbered errors, and no Balance changes.
 
 ## Run the specs
 
@@ -32,29 +35,18 @@ The upload returns the Settled Transfers, the Rejected Transfers with their Reje
 dotnet test
 ```
 
-## Resetting the Balances
-
-The service works on a copy of `mable_account_balances.csv` in its build output, so the file in the repo is never modified. Balances are kept across restarts. To go back to the opening Balances:
-
-```sh
-dotnet clean
-```
-
-The copy is made with `PreserveNewest`, so editing the repo's `mable_account_balances.csv` also replaces the working copy on the next build, and the Settled Balances are lost.
-
 ## Decisions & Assumptions
 
 - Transfers are settled gross (one at a time and only if the sender holds the full amount at that moment) because
   net settlement turns into an unfair subset-selection problem once any Account nets negative (see [ADR 0001](docs/adr/0001-gross-multi-pass-settlement.md))
-- Minimal API used on the basis that company is specified to provide the file in some way. Console batch application would be marginally simpler but less usable.
+- Console batch job, because the brief asks for a system that loads the Balances and then accepts a day's Transfers. The two files are passed as arguments.
 - Persistance and provision of account balance in csv file for simplicity. Repository pattern used to easily swap in SQLite database.
 - Simplified CQRS pattern used to encapulate application logic with single responsbility; no need for a mediator pattern yet.
 
 ## Known limitations
 
-- Uploading the same file again settles it again (no idempotency). Can be achieved by persisting batch status but deemed beyond scope of exercise.
+- Running the same Transfer Batch again settles it again (no idempotency). Can be achieved by persisting batch status but deemed beyond scope of exercise.
 - One Company only.
-- One Settlement runs at a time.
 - Outcomes depend on the order of the Transfers in the file.
 
 ## Design

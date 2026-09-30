@@ -1,6 +1,6 @@
 # xUnit v3 and Shouldly in place of RSpec
 
-The challenge rubric asks for RSpec, but the solution is written in .NET 10, as agreed with HR. The specs use xUnit v3 with nested classes named in describe/context/it style, Shouldly assertions, and `WebApplicationFactory` for in-process API specs.
+The challenge rubric asks for RSpec, but the solution is written in .NET 10, as agreed with HR. The specs use xUnit v3 with nested classes named in describe/context/it style, Shouldly assertions, and in-process specs of the console job against temporary files.
 
 ## Considered Options
 

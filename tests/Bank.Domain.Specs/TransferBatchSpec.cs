@@ -260,8 +260,6 @@ public class TransferBatchSpec
 
     public class when_each_transfer_waits_on_the_one_after_it
     {
-        // Account 0 is funded. Transfer n moves money from account n to account n + 1, but the
-        // Transfers are listed last first, so each Pass can settle only one of them.
         const int Count = 50;
 
         [Fact]

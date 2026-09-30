@@ -1,6 +1,5 @@
 namespace Bank.Specs;
 
-// The contents of mable_account_balances.csv and mable_transactions.csv.
 static class Samples
 {
     public const string Balances =

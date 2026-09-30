@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Bank.Api.Specs;
+namespace Bank.Cli.Specs;
 
 static class Json
 {
@@ -12,4 +12,6 @@ static class Json
 
         return lines;
     }
+
+    public static string Compact(JsonElement element) => JsonSerializer.Serialize(element);
 }

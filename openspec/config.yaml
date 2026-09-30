@@ -24,10 +24,10 @@ rules:
     - Gherkin steps use docs/CONTEXT.md domain terms; amounts in dollars and cents, account numbers as 16-digit strings
     - Specs state observable behaviour only; class and method names belong in design.md
   design:
-    - Always write design.md, taking the solution layout, domain model and API shape from docs/scoping/design-summary.md
+    - Always write design.md, taking the solution layout, domain model and console interface from docs/scoping/design-summary.md
     - Reference the design summary rather than restating it; record only decisions it leaves open
   tasks:
-    - Group tasks in the order of the design summary's Delivery plan (Domain, Application, Data, Api and README); test-first, so each task writes the failing spec before the code
+    - Group tasks in the order of the design summary's Delivery plan (Domain, Application, Data, Cli and README); test-first, so each task writes the failing spec before the code
     - Specs use xUnit v3 and Shouldly with nested describe/context/it classes (ADR 0002)
 
 # Project context (optional)

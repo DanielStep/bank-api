@@ -13,7 +13,6 @@ public class TransferBatch
     {
         var settled = new List<Transfer>();
 
-        // Each time round is one Pass. Stop after a Pass that settles nothing.
         bool settledSomething;
         do
         {
@@ -40,7 +39,7 @@ public class TransferBatch
         return new SettlementResult(settled, rejected, accounts);
     }
 
-    private static bool TrySettle(Transfer transfer, Accounts accounts)
+    private bool TrySettle(Transfer transfer, Accounts accounts)
     {
         var sending = accounts.Find(transfer.SendingAccount);
         if (sending == null)

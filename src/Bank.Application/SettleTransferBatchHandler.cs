@@ -4,9 +4,6 @@ namespace Bank.Application;
 
 public class SettleTransferBatchHandler
 {
-    // Only one Settlement runs at a time, so none of its changes is lost.
-    private static readonly object SettleLock = new();
-
     private readonly IAccountRepository repository;
 
     public SettleTransferBatchHandler(IAccountRepository repository)
@@ -30,11 +27,8 @@ public class SettleTransferBatchHandler
 
         var batch = new TransferBatch(transfers);
 
-        lock (SettleLock)
-        {
-            var result = batch.Settle(repository.GetAll());
-            repository.SaveAll(result.Accounts);
-            return new SettleTransferBatchOutcome(result, new List<CsvError>());
-        }
+        var result = batch.Settle(repository.GetAll());
+        repository.SaveAll(result.Accounts);
+        return new SettleTransferBatchOutcome(result, new List<CsvError>());
     }
 }

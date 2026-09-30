@@ -1,8 +1,8 @@
-# bank-api Specification
+# bank-batch-job Specification
 
 ## Purpose
 
-A banking service for one Company. It holds the Company's Account Balances and settles each day's Transfer Batch, uploaded over HTTP as CSV, gross and in Position order, so that no Account ever goes below $0. It runs with a single `dotnet run` and nothing to configure.
+A console batch job for one Company. It loads the Company's Account Balances from a CSV file, settles the day's Transfer Batch from a second CSV file, gross and in Position order, so that no Account ever goes below $0, and writes the closing Balances back. It runs with a single `dotnet run` and nothing to configure.
 
 ## Requirements
 
@@ -299,36 +299,35 @@ Scenario: Outcomes are reported in their documented order
   And the closing Balances of all three Accounts are reported
 ```
 
-### Requirement: A Transfer Batch is submitted as a CSV file upload
-The service SHALL accept a Transfer Batch at `POST /transfer-batches` as a `multipart/form-data` request holding one CSV file. A request with no file SHALL be answered with 400 and SHALL change no Balance.
+### Requirement: The job takes the balances file and the Transfer Batch file as its arguments
+The job SHALL take exactly two arguments: the path of the balances file, then the path of the Transfer Batch CSV file. When it is given any other number of arguments, or a file cannot be read, it SHALL print an error to standard error, exit with status 1 and change no Balance.
 
-#### Scenario: The sample Transfer Batch is uploaded
+#### Scenario: The sample files are given
 ```gherkin
-Scenario: The sample Transfer Batch is uploaded
+Scenario: The sample files are given
   Given the Company's Accounts hold the balances in mable_account_balances.csv
-  When the Company uploads mable_transactions.csv to POST /transfer-batches
-  Then the response status is 200
+  When the job is run with mable_account_balances.csv and mable_transactions.csv
+  Then the job exits with status 0
 ```
 
-#### Scenario: The request holds no file
+#### Scenario: The job is not given two files
 ```gherkin
-Scenario: The request holds no file
-  Given the Company's Accounts hold the balances in mable_account_balances.csv
-  When the Company sends POST /transfer-batches with no file
-  Then the response status is 400
-  And every Balance is unchanged
+Scenario: The job is not given two files
+  When the job is run with only balances.csv
+  Then it prints its usage to standard error
+  And the job exits with status 1
 ```
 
 ### Requirement: The CSV holds one Transfer per line with no header row
-Each line of the CSV SHALL hold exactly three comma-separated fields, in this order: the Sending Account number, the Receiving Account number and the amount. There is no header row. The line number of each line SHALL be the Position of its Transfer in the Transfer Batch. Lines MAY end in CRLF or LF, and the last line MAY omit its line ending. An amount MAY carry a leading sign and SHALL use a `.` as its decimal point. A well-formed amount of $0.00 or less SHALL NOT make the file malformed; that Transfer is instead Rejected with Rejection Reason NonPositiveAmount.
+Each line of the Transfer Batch CSV SHALL hold exactly three comma-separated fields, in this order: the Sending Account number, the Receiving Account number and the amount. There is no header row. The line number of each line SHALL be the Position of its Transfer in the Transfer Batch. Lines MAY end in CRLF or LF, and the last line MAY omit its line ending. An amount MAY carry a leading sign and SHALL use a `.` as its decimal point. A well-formed amount of $0.00 or less SHALL NOT make the file malformed; that Transfer is instead Rejected with Rejection Reason NonPositiveAmount.
 
 #### Scenario Outline: Line endings do not matter
 ```gherkin
 Scenario Outline: Line endings do not matter
   Given the Company's Accounts hold the balances in mable_account_balances.csv
   And mable_transactions.csv rewritten with <ending> line endings, <final> a line ending on its last line
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 200
+  When the job is run with it
+  Then the job exits with status 0
   And all four Transfers are reported as Settled
 
   Examples:
@@ -348,24 +347,24 @@ Scenario: A negative amount is a Rejected Transfer, not a malformed file
     1111234522226789,1212343433335665,-5.00
     1111234522226789,1212343433335665,500.00
     """
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 200
+  When the job is run with it
+  Then the job exits with status 0
   And line 1 is reported as Rejected with amount -5.00 and reason NonPositiveAmount
   And line 2 is reported as Settled
 ```
 
 ### Requirement: A malformed CSV is refused as a whole
-The service SHALL answer a malformed CSV with 400 and a problem details body that lists every error found, each with its line number. A line is malformed when it does not hold exactly three fields, when either account number is not exactly 16 digits, or when its amount is not a number or has more than 2 decimal places. A blank line before the last line is malformed. A file holding no Transfers SHALL also be refused with 400. When a CSV is refused, no Transfer in it SHALL be settled and no Balance SHALL change.
+The job SHALL refuse a malformed Transfer Batch CSV by printing every error found to standard error, each with its line number, and exiting with status 1. A line is malformed when it does not hold exactly three fields, when either account number is not exactly 16 digits, or when its amount is not a number or has more than 2 decimal places. A blank line before the last line is malformed. A file holding no Transfers SHALL also be refused. When a CSV is refused, no Transfer in it SHALL be settled and no Balance SHALL change.
 
 #### Scenario Outline: A line is malformed
 ```gherkin
 Scenario Outline: A line is malformed
   Given the Company's Accounts hold the balances in mable_account_balances.csv
   And a CSV file of three lines, where lines 1 and 3 are "1111234522226789,1212343433335665,500.00" and line 2 is "<line>"
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 400
-  And the response lists an error for line 2
-  And the response lists no error for lines 1 and 3
+  When the job is run with it
+  Then the job exits with status 1
+  And it prints an error for line 2
+  And it prints no error for lines 1 and 3
   And every Balance is unchanged
 
   Examples:
@@ -390,17 +389,17 @@ Scenario: Every malformed line is reported
     1111234522226789,1212343433335665,500.00
     1111234522226789,1212343433335665
     """
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 400
-  And the response lists errors for lines 1 and 3
+  When the job is run with it
+  Then the job exits with status 1
+  And it prints errors for lines 1 and 3
 ```
 
 #### Scenario Outline: A file holds no Transfers
 ```gherkin
 Scenario Outline: A file holds no Transfers
   Given a CSV file holding <content>
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 400
+  When the job is run with it
+  Then the job exits with status 1
   And every Balance is unchanged
 
   Examples:
@@ -410,7 +409,7 @@ Scenario Outline: A file holds no Transfers
 ```
 
 ### Requirement: A well-formed CSV is settled and every outcome is reported
-For a well-formed CSV the service SHALL settle the Transfer Batch and answer 200, even when every Transfer is Rejected. The JSON body SHALL hold:
+For a well-formed CSV the job SHALL settle the Transfer Batch, exit with status 0, even when every Transfer is Rejected, and print a JSON report to standard output holding:
 - `settled`: the Settled Transfers in the order they settled, each with `line`, `from`, `to` and `amount`;
 - `rejected`: the Rejected Transfers in Position order, each with `line`, `from`, `to`, `amount` and `reason`, where `reason` is the Rejection Reason's name;
 - `balances`: every Account's closing Balance, each with `accountNumber` and `balance`.
@@ -427,8 +426,8 @@ Scenario: A mixed Transfer Batch
     1111234522226789,1111234522226789,10.00
     1111234522226789,2222123433331212,100.00
     """
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 200
+  When the job is run with it
+  Then the job exits with status 0
   And "settled" is:
     | line | from             | to               | amount |
     | 3    | 1111234522226789 | 2222123433331212 | 100.00 |
@@ -447,22 +446,22 @@ Scenario: Every Transfer is Rejected
     """
     9999999999999999,1212343433335665,10.00
     """
-  When the Company uploads it to POST /transfer-batches
-  Then the response status is 200
+  When the job is run with it
+  Then the job exits with status 0
   And "settled" is empty
   And "rejected" holds line 1 with reason UnknownSendingAccount
   And every Balance is unchanged
 ```
 
 ### Requirement: The sample files settle to the expected closing Balances
-Uploading `mable_transactions.csv` against the opening Balances in `mable_account_balances.csv` SHALL settle all four Transfers and give the closing Balances below.
+Running the job with `mable_account_balances.csv` and `mable_transactions.csv` SHALL settle all four Transfers and give the closing Balances below.
 
 #### Scenario: Headline acceptance
 ```gherkin
 Scenario: Headline acceptance
   Given the Company's Accounts hold the balances in mable_account_balances.csv
-  When the Company uploads mable_transactions.csv to POST /transfer-batches
-  Then the response status is 200
+  When the job is run with mable_account_balances.csv and mable_transactions.csv
+  Then the job exits with status 0
   And "settled" lists lines 1, 2, 3 and 4 in that order
   And "rejected" is empty
   And the closing Balances are:
@@ -474,73 +473,25 @@ Scenario: Headline acceptance
     | 3212343433335755 | 48679.50  |
 ```
 
-### Requirement: Each upload is settled on its own
-Every accepted upload SHALL be settled as a new Transfer Batch against the current Balances. Uploading the same file again SHALL settle it again.
+### Requirement: The closing Balances are written to the balances file and printed
+After a Settlement the job SHALL write the closing Balances to the balances file it was given, then print that file's contents to standard output after the report. The balances file SHALL keep the format it was read in: one `account,balance` line per Account, in the same order, no header row, and each Balance with exactly 2 decimal places.
 
-#### Scenario: The same file is uploaded twice
+#### Scenario: Balances after a run
 ```gherkin
-Scenario: The same file is uploaded twice
+Scenario: Balances after a run
   Given the Company's Accounts hold the balances in mable_account_balances.csv
-  And the Company has uploaded mable_transactions.csv once
-  When the Company uploads mable_transactions.csv again
-  Then the response status is 200
-  And the Balance of 1111234522226789 is $4,641.00
+  When the job is run with mable_account_balances.csv and mable_transactions.csv
+  Then mable_account_balances.csv holds a Balance of $4,820.50 for 1111234522226789
+  And it holds a Balance of $48,679.50 for 3212343433335755
+  And the job prints the contents of mable_account_balances.csv
 ```
 
-### Requirement: The current Balances can be read
-`GET /accounts` SHALL answer 200 with a JSON array that holds every one of the Company's Accounts, each with `accountNumber` (a JSON string) and `balance` (a JSON number). Accounts SHALL be listed in the order of the balances file.
-
-#### Scenario: Opening Balances
+#### Scenario: The balances file keeps its format
 ```gherkin
-Scenario: Opening Balances
-  Given the service has started from mable_account_balances.csv
-  When the Company sends GET /accounts
-  Then the response status is 200
-  And the response is:
-    | accountNumber    | balance  |
-    | 1111234522226789 |  5000.00 |
-    | 1111234522221234 | 10000.00 |
-    | 2222123433331212 |   550.00 |
-    | 1212343433335665 |  1200.00 |
-    | 3212343433335755 | 50000.00 |
-```
-
-#### Scenario: An account number keeps its leading zeros
-```gherkin
-Scenario: An account number keeps its leading zeros
-  Given a balances file holding account 0000123412341234 with a Balance of $10.00
-  When the Company sends GET /accounts
-  Then the response lists accountNumber "0000123412341234" with balance 10.00
-```
-
-### Requirement: Balances are kept across settlements and restarts
-The Balances after a Settlement SHALL be written to the working balances file before the upload is answered. Each later Settlement, each `GET /accounts` and each restart of the service SHALL start from those Balances. The working balances file SHALL keep the format it was read in: one `account,balance` line per Account, no header row, and each Balance with exactly 2 decimal places.
-
-#### Scenario: Balances after an upload
-```gherkin
-Scenario: Balances after an upload
-  Given the service has started from mable_account_balances.csv
-  And the Company has uploaded mable_transactions.csv
-  When the Company sends GET /accounts
-  Then the Balance of 1111234522226789 is $4,820.50
-  And the Balance of 3212343433335755 is $48,679.50
-```
-
-#### Scenario: Balances survive a restart
-```gherkin
-Scenario: Balances survive a restart
-  Given the Company has uploaded mable_transactions.csv
-  And the service has been restarted without a clean build
-  When the Company sends GET /accounts
-  Then the Balance of 1111234522226789 is $4,820.50
-```
-
-#### Scenario: The working balances file keeps its format
-```gherkin
-Scenario: The working balances file keeps its format
-  Given a working balances file holding account 1111111111111111 with a Balance of $100.00 and account 2222222222222222 with a Balance of $0.00
+Scenario: The balances file keeps its format
+  Given a balances file holding account 1111111111111111 with a Balance of $100.00 and account 2222222222222222 with a Balance of $0.00
   And a Transfer Batch with one Transfer of $0.50 from 1111111111111111 to 2222222222222222 has been settled
-  When the working balances file is read as text
+  When the balances file is read as text
   Then it is:
     """
     1111111111111111,99.50
@@ -548,35 +499,28 @@ Scenario: The working balances file keeps its format
     """
 ```
 
-### Requirement: The sample balances file is the starting point and is never modified
-The service SHALL start from a working copy of `mable_account_balances.csv` placed next to the built service. Only the working copy SHALL ever be written; the file in the repository SHALL stay unchanged. A clean build SHALL reset the Balances to those in the repository's file.
+### Requirement: Each run is settled on its own
+Every run SHALL settle its Transfer Batch as a new Transfer Batch against the Balances in the balances file. Running the same Transfer Batch file again SHALL settle it again.
 
-#### Scenario: The repository's file is untouched by a Settlement
+#### Scenario: The same file is run twice
 ```gherkin
-Scenario: The repository's file is untouched by a Settlement
-  Given the service has started from mable_account_balances.csv
-  When the Company uploads mable_transactions.csv
-  Then mable_account_balances.csv in the repository still holds the opening Balances
+Scenario: The same file is run twice
+  Given the Company's Accounts hold the balances in mable_account_balances.csv
+  And the job has been run once with mable_account_balances.csv and mable_transactions.csv
+  When the job is run with them again
+  Then the job exits with status 0
+  And the Balance of 1111234522226789 is $4,641.00
 ```
 
-#### Scenario: A clean build resets the Balances
-```gherkin
-Scenario: A clean build resets the Balances
-  Given the Company has uploaded mable_transactions.csv
-  And the service has been cleaned, rebuilt and started again
-  When the Company sends GET /accounts
-  Then the Balance of 1111234522226789 is $5,000.00
-```
-
-### Requirement: A balances file that cannot be trusted stops the service at startup
-The service SHALL refuse to start when the balances file is malformed or lists the same account number twice. A line is malformed when it does not hold exactly two fields, when its account number is not exactly 16 digits, or when its Balance is not a number, is below $0.00, or has more than 2 decimal places.
+### Requirement: A balances file that cannot be trusted stops the job
+The job SHALL print an error that names the balances file, exit with status 1 and settle no Transfer when the balances file is malformed or lists the same account number twice. A line is malformed when it does not hold exactly two fields, when its account number is not exactly 16 digits, or when its Balance is not a number, is below $0.00, or has more than 2 decimal places.
 
 #### Scenario Outline: The balances file is malformed
 ```gherkin
 Scenario Outline: The balances file is malformed
   Given a balances file whose second line is "<line>"
-  When the service starts
-  Then it stops with an error that names the balances file
+  When the job is run with it and mable_transactions.csv
+  Then it exits with status 1 and an error that names the balances file
 
   Examples:
     | line                              |
@@ -596,48 +540,27 @@ Scenario: The balances file lists an account twice
     1111111111111111,10.00
     1111111111111111,20.00
     """
-  When the service starts
-  Then it stops with an error that names the duplicated account number
+  When the job is run with it and mable_transactions.csv
+  Then it exits with status 1 and an error that names the duplicated account number
 ```
 
-### Requirement: The service runs with no configuration
-Running `dotnet run --project src/Bank.Api` from the repository root SHALL start the service on `http://localhost:5080` over plain HTTP, on Windows and Mac, with no configuration, certificate or environment variable to set. The service SHALL NOT redirect to HTTPS. It SHALL find its balances file wherever the repository is cloned and whichever directory it is started from.
+### Requirement: The job runs with no configuration
+Running `dotnet run --project src/Bank.Cli -- <balances file> <Transfer Batch file>` from the repository root SHALL run the job on Windows and Mac with no configuration or environment variable to set. Relative file paths SHALL be read from the directory the job is run from.
 
 #### Scenario: A fresh clone is run
 ```gherkin
 Scenario: A fresh clone is run
   Given a fresh clone of the repository and the .NET 10 SDK
-  When the reviewer runs "dotnet run --project src/Bank.Api"
-  Then the service answers GET http://localhost:5080/accounts with 200
+  When the reviewer runs "dotnet run --project src/Bank.Cli -- mable_account_balances.csv mable_transactions.csv"
+  Then the job exits with status 0 and prints the report and the updated balances file
 ```
 
-#### Scenario: Plain HTTP is not redirected
+### Requirement: The job serves one Company
+Each run SHALL settle the Accounts of exactly one Company, those in the balances file. No argument SHALL name a Company.
+
+#### Scenario: Arguments carry no Company
 ```gherkin
-Scenario: Plain HTTP is not redirected
-  Given the service is running
-  When the Company sends GET http://localhost:5080/accounts
-  Then the response status is 200, not a redirect
-```
-
-### Requirement: The service serves one Company
-Each running service SHALL hold the Accounts of exactly one Company. No request SHALL name a Company.
-
-#### Scenario: Requests carry no Company
-```gherkin
-Scenario: Requests carry no Company
-  Given the service is running
-  When the Company sends GET /accounts
-  Then the response holds the one Company's Accounts
-```
-
-### Requirement: One Settlement runs at a time
-When several Transfer Batches are uploaded at the same time, the service SHALL settle them one after another. Each SHALL start from the Balances the previous one left, and no Settlement's changes SHALL be lost.
-
-#### Scenario: Two uploads arrive together
-```gherkin
-Scenario: Two uploads arrive together
-  Given the service has started from mable_account_balances.csv
-  When the Company uploads mable_transactions.csv twice at the same time
-  Then both responses have status 200
-  And the Balance of 1111234522226789 is $4,641.00
+Scenario: Arguments carry no Company
+  When the job is run with mable_account_balances.csv and mable_transactions.csv
+  Then the report holds the one Company's Accounts
 ```

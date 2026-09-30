@@ -185,6 +185,14 @@ Related files:
 |---|---|---|
 | Q34 | The status of a valid Transfer before its first Pass | Review found that `TransferStatus` (Settled, Deferred, Rejected) had no state for a Transfer that has passed `Create`'s checks but not yet been tried. User: **replace Deferred with Unsettled.** A Transfer that passes `Create` starts Unsettled, stays Unsettled when its Sending Account is short, and is Rejected as `InsufficientFunds` if it is still Unsettled when Settlement stops. CONTEXT.md, the design summary and ADR 0001 were updated to match. |
 
+### Round 7: console batch job
+
+| # | Question | Decision |
+|---|---|---|
+| Q35 | HTTP API or console job | User, on re-reading the brief ("load account balances … and then accept a day's transfers"): *"This isn't an API, it's a simple console batch job that runs and has two file names passed to it as arguments."* **The Api is replaced by a console job** that takes the balances file and the Transfer Batch file, and prints the report the upload used to return plus the updated balances file. **`GET /accounts` and the get-accounts query are removed.** Supersedes Q1, Q11, Q17b, Q24's Minimal API and Q25. |
+| Q36 | Writing the balances file | User: **write the closing balances back to the balances file passed in, then print it.** The build-output working copy (Q17b) is dropped, so running on the sample changes the repo's file. |
+| Q37 | Follow-ups to the console job | User: *"There's no need for a lock, the test shouldn't break anything, rename bank api to bank batch job."* **The settlement `lock` is removed** (one run per process). **The headline spec settles the repo's `mable_transactions.csv` against the brief's opening balances** instead of reading `mable_account_balances.csv`, so a run of the job can't break it. **`BankApi.slnx` becomes `BankBatchJob.slnx` and the OpenSpec capability `bank-api` becomes `bank-batch-job`.** |
+
 ## Worked check: sample files
 
 All four sample Transfers Settle on pass 1.

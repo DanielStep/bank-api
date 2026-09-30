@@ -1,10 +1,10 @@
 # Design Summary
 
-The agreed design for the Mable back end code challenge, from the design interview on 30/09/2026. See [design-interview.md](./design-interview.md) for the reasoning and research behind each decision. Domain terms follow [CONTEXT.md](../CONTEXT.md).
+The agreed design for the Mable back end code challenge, from the design interview on 30/09/2026 and amended the same day to a console batch job (Q35). See [design-interview.md](./design-interview.md) for the reasoning and research behind each decision. Domain terms follow [CONTEXT.md](../CONTEXT.md).
 
 ## Goal
 
-A .NET 10 HTTP API that holds one Company's Account balances and settles a day's Transfer Batch uploaded as CSV. It must run on Windows and Mac with only `dotnet run`, and nothing to configure.
+A .NET 10 console batch job that loads one Company's Account balances from a CSV file, settles a day's Transfer Batch from a second CSV file, and writes the closing balances back. The two file names are its arguments. It must run on Windows and Mac with only `dotnet run`, and nothing to configure.
 
 Reviewer rubric to satisfy:
 - **Data structure:** uses domain models, and uses native data structures readably.
@@ -15,16 +15,16 @@ Reviewer rubric to satisfy:
 ## Solution layout
 
 ```
-BankApi.slnx
+BankBatchJob.slnx
 global.json                      SDK 10.0 with roll-forward; test runner = Microsoft.Testing.Platform
 src/Bank.Domain/                 no dependencies
 src/Bank.Application/            → Domain
 src/Bank.Data/                   → Domain
-src/Bank.Api/                    → Application, Data (composition root)
+src/Bank.Cli/                    → Application, Data (composition root)
 tests/Bank.Domain.Specs/
 tests/Bank.Application.Specs/
 tests/Bank.Data.Specs/
-tests/Bank.Api.Specs/
+tests/Bank.Cli.Specs/
 ```
 
 ## Domain (written first, test-first)
@@ -139,20 +139,17 @@ How `Settle` runs:
   2. Map the rows to domain Transfers, so the CSV never reaches the domain.
   3. Load the Accounts, call `batch.Settle(accounts)` with the `Accounts` from the repository, then save.
   4. Return the `SettlementResult`.
-  - A plain C# `lock` around load, settle and save makes sure only one settlement runs at a time. The get-accounts query takes no lock.
-- **Get-accounts query + handler**: returns the current balances.
 
 ## Data
 
-- **`FileAccountRepository`** implements `IAccountRepository`. It reads and writes a balances CSV (`account,balance`, no header) at a path passed in when the Api registers it.
-- The csproj copies `mable_account_balances.csv` (repo root) into the build output (`CopyToOutputDirectory=PreserveNewest`), and the repository works on that copy. The file in the repo is never modified, and `dotnet clean` resets the balances.
-- There's no seed-copy or safe-write logic. A malformed balances file stops the app at startup, and so does one that lists an account twice, because building `Accounts` refuses it.
+- **`FileAccountRepository`** implements `IAccountRepository`. It reads and writes the balances CSV (`account,balance`, no header) at the path given as the job's first argument. The file is overwritten in place.
+- There's no seed-copy or safe-write logic. A malformed balances file stops the job, and so does one that lists an account twice, because building `Accounts` refuses it.
 
-## Api (Minimal API, no mediator library)
+## Cli (console batch job, no mediator library)
 
-- **`POST /transfer-batches`**: `multipart/form-data` with one CSV file. The endpoint injects the Application handler and calls it directly.
-  - **200:** the CSV is well-formed. This holds even if every Transfer is Rejected.
-    `line` in the response is the Transfer's Position, named for the person reading the file.
+- **`dotnet run --project src/Bank.Cli -- <balances.csv> <transfers.csv>`**. `SettlementJob` builds the repository on the balances file and calls the Application handler directly.
+  - **Exit 0:** the Transfer Batch file is well-formed. This holds even if every Transfer is Rejected. The job prints a JSON report, then the updated balances file.
+    `line` in the report is the Transfer's Position, named for the person reading the file.
     ```json
     {
       "settled":  [{ "line": 1, "from": "...", "to": "...", "amount": 500.00 }],
@@ -160,10 +157,9 @@ How `Settle` runs:
       "balances": [{ "accountNumber": "...", "balance": 4820.50 }]
     }
     ```
-  - **400:** a parse error, returned as ProblemDetails with line-numbered errors. Nothing is applied.
-- **`GET /accounts`**: the current balances.
-- **Hosting:** HTTP only (no HTTPS redirect, no dev cert) on a fixed port other than 5000. Paths are built from the content root or base directory.
-- **Company:** there's one Company per deployment; no Company in the model or routes.
+  - **Exit 1:** a parse error, printed to standard error as line-numbered errors. Nothing is applied. A malformed or missing file, or the wrong number of arguments, also exits with 1.
+- **Paths:** relative to the directory the job is run from.
+- **Company:** there's one Company per balances file; no Company in the model or arguments.
 
 ## Specs (xUnit v3 4.x + Shouldly)
 
@@ -173,8 +169,8 @@ How `Settle` runs:
   - **Domain:** pure, no fakes. Value object rules, Account overdraft guard, every rejection reason and their precedence order, retrying Unsettled Transfers and later settlement, knock-on failures, cycles, order-dependence, stopping.
   - **Application:** parser rows and errors; the command with an in-memory `IAccountRepository` fake, checking that it maps, calls the domain and saves (without re-testing the settlement rules).
   - **Data:** the file repository against a temporary file: round-trip and malformed-file handling.
-  - **Api:** `WebApplicationFactory`, in-process, each spec on its own temporary balances file: 200 on the happy path, 400 on a parse error, `GET /accounts`.
-- **Headline acceptance spec:** the sample files give these closing balances.
+  - **Cli:** `SettlementJob` in-process, each spec on its own temporary balances and Transfer Batch files: exit 0 with the report and updated balances file on the happy path, exit 1 on a parse error, a malformed balances file or missing arguments.
+- **Headline acceptance spec:** the repo's `mable_transactions.csv`, settled against the opening balances from the brief, gives these closing balances. It never reads `mable_account_balances.csv`, which the job overwrites.
 
 | Account | Closing |
 |---|---:|
@@ -186,14 +182,13 @@ How `Settle` runs:
 
 ## README contents
 
-- `dotnet run --project src/Bank.Api`, then one `curl -F file=@mable_transactions.csv …` line.
+- One `dotnet run --project src/Bank.Cli -- mable_account_balances.csv mable_transactions.csv` line, and `git checkout mable_account_balances.csv` to reset the sample's Balances.
 - The expected closing balances (the table above), and `dotnet test` to run the specs.
 - A note that .NET 10 was used, as agreed with Mable.
 - **Known limitations:**
-  - Re-posting a file settles it again (no idempotency).
+  - Running the same file again settles it again (no idempotency).
   - One Company only.
-  - One settlement runs at a time.
-  - A `GET /accounts` that arrives while a settlement is writing the balances file can fail.
+  - Two runs at the same time on the same balances file can lose one run's changes.
   - Outcomes depend on file order (see ADR 0001).
 
 ## Delivery plan
@@ -202,10 +197,10 @@ The work is delivered as one OpenSpec change. Its `tasks.md` has four task group
 
 | # | Task group | Covers |
 |---|---|---|
-| 1 | Domain | `BankApi.slnx` and `global.json` from the [Solution layout](#solution-layout), then [Domain](#domain-written-first-test-first): value objects, `Account`, `Accounts`, `Transfer`, `TransferBatch`, `SettlementResult`, `IAccountRepository`, and the domain specs. Test-first. |
-| 2 | Application | [Application](#application): `TransferCsvParser`, the settle command and get-accounts query with their handlers, and the Application specs. |
-| 3 | Data | [Data](#data): `FileAccountRepository`, copying the balances CSV into the build output, and the Data specs. |
-| 4 | Api and README | [Api](#api-minimal-api-no-mediator-library): both endpoints and hosting, the Api specs, the headline acceptance spec, and the [README](#readme-contents). |
+| 1 | Domain | `BankBatchJob.slnx` and `global.json` from the [Solution layout](#solution-layout), then [Domain](#domain-written-first-test-first): value objects, `Account`, `Accounts`, `Transfer`, `TransferBatch`, `SettlementResult`, `IAccountRepository`, and the domain specs. Test-first. |
+| 2 | Application | [Application](#application): `TransferCsvParser`, the settle command and its handler, and the Application specs. |
+| 3 | Data | [Data](#data): `FileAccountRepository` and the Data specs. |
+| 4 | Cli and README | [Cli](#cli-console-batch-job-no-mediator-library): the console job, the Cli specs, the headline acceptance spec, and the [README](#readme-contents). |
 
 Each group adds only its own layer's `src/` and `tests/` projects to the solution.
 

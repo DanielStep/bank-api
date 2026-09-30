@@ -1,12 +1,12 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Bank.Api/Bank.Api.csproj" />
+    <Project Path="src/Bank.Cli/Bank.Cli.csproj" />
     <Project Path="src/Bank.Application/Bank.Application.csproj" />
     <Project Path="src/Bank.Data/Bank.Data.csproj" />
     <Project Path="src/Bank.Domain/Bank.Domain.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Bank.Api.Specs/Bank.Api.Specs.csproj" />
+    <Project Path="tests/Bank.Cli.Specs/Bank.Cli.Specs.csproj" />
     <Project Path="tests/Bank.Application.Specs/Bank.Application.Specs.csproj" />
     <Project Path="tests/Bank.Data.Specs/Bank.Data.Specs.csproj" />
     <Project Path="tests/Bank.Domain.Specs/Bank.Domain.Specs.csproj" />
