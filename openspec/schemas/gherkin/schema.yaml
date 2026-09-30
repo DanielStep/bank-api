@@ -98,7 +98,7 @@ artifacts:
         `Then` (observable outcome); continue any of them with `And` / `But`
       - Exactly one `When` per scenario; split a scenario that needs two
       - Use `Background:` only inside a scenario block, never at requirement level
-      - Write steps in domain language (see CONTEXT.md), not UI clicks or code
+      - Write steps in domain language (see docs/CONTEXT.md), not UI clicks or code
       - Use `Scenario Outline:` + `Examples:` when the same rule is checked with several data rows
       - **CRITICAL**: Scenario headers MUST use exactly 4 hashtags (`####`). Using 3 hashtags or bullets will fail silently.
         The markdown header is what OpenSpec parses; the gherkin block is the scenario body.

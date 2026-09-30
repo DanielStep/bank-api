@@ -4,7 +4,7 @@ Record of the design interview for the Mable back end code challenge, held on 30
 
 Related files:
 - [Design summary](./design-summary.md): the agreed design, ready to hand to later steps.
-- [CONTEXT.md](../../CONTEXT.md): the glossary of domain terms.
+- [CONTEXT.md](../CONTEXT.md): the glossary of domain terms.
 - [ADR 0001](../adr/0001-gross-multi-pass-settlement.md): gross, multi-pass settlement.
 - [ADR 0002](../adr/0002-xunit-and-shouldly-in-place-of-rspec.md): xUnit v3 and Shouldly in place of RSpec.
 

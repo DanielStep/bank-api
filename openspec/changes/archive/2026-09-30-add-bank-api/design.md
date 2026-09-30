@@ -2,7 +2,7 @@
 
 ## Context
 
-The repo holds no code yet. [docs/design/design-summary.md](../../../docs/design/design-summary.md) is the design this change builds, and it is authoritative for the solution layout, the domain model, how `Settle` runs, the Application, Data and Api layers, and the spec style. This document does not repeat it. It records only the decisions the summary leaves open, plus one amendment the user made while this change was being proposed. For the motivation, see [proposal.md](./proposal.md) (Why), and for behaviour, see [specs/bank-api/spec.md](./specs/bank-api/spec.md).
+The repo holds no code yet. [docs/scoping/design-summary.md](../../../../docs/scoping/design-summary.md) is the design this change builds, and it is authoritative for the solution layout, the domain model, how `Settle` runs, the Application, Data and Api layers, and the spec style. This document does not repeat it. It records only the decisions the summary leaves open, plus one amendment the user made while this change was being proposed. For the motivation, see [proposal.md](./proposal.md) (Why), and for behaviour, see [specs/bank-api/spec.md](./specs/bank-api/spec.md).
 
 Environment: .NET SDK 10.0.111 is now installed at `/usr/share/dotnet/sdk`, so the summary's "Before building" step is already done.
 

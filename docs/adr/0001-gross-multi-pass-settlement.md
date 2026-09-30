@@ -10,6 +10,6 @@ A Transfer Batch is settled gross: each Transfer settles on its own, and only if
 ## Consequences
 
 - Outcomes depend on order. Swapping two Transfers from the same Account can change which one settles.
-- A cycle between unfunded Accounts (A→B 100 and B→A 100, both starting at $0) is fully Rejected, even though netting would clear it.
+- A cycle between unfunded Accounts (A→B 100 and B→A 100, both starting at $0) is fully Rejected, even though netting would work.
 - A later Transfer can settle before an earlier Unsettled Transfer from the same Account.
 - Settlement always finishes: each pass either settles at least one Transfer or is the last pass, so there are at most N passes.

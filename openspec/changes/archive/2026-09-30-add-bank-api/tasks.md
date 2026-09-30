@@ -75,14 +75,14 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
   - Verify: the `PostTransferBatchesSpec` contexts pass.
 - [x] 4.4 Spec the `bank-api` spec's "Two uploads arrive together" scenario: two uploads of the sample file started together with `Task.WhenAll` both return 200, and 1111234522226789 ends at $4,641.00. Verify: the context passes.
 - [x] 4.5 Write the headline acceptance spec: the real `mable_account_balances.csv` + `mable_transactions.csv` settle all four lines in order, reject none, and give the five closing Balances in the design summary's table. Verify: `SampleFileIntegrationSpec` passes and the whole `dotnet test` run is green.
-- [ ] 4.6 Write `README.md` from the design summary's README contents:
+- [x] 4.6 Write `README.md` from the design summary's README contents:
   - `dotnet run --project src/Bank.Api`
   - `curl -F file=@mable_transactions.csv http://localhost:5080/transfer-batches` and `curl http://localhost:5080/accounts`
   - the expected closing Balances table, and `dotnet test`
   - the .NET 10 note, and "AUD assumed"
   - the known limitations, plus the `dotnet clean` reset and `PreserveNewest` note
   - Verify: every command in it runs as written from a fresh clone.
-- [ ] 4.7 Manual check of the scenarios that can't run in-process:
+- [x] 4.7 Manual check of the scenarios that can't run in-process:
   - `dotnet run --project src/Bank.Api` from the repo root starts on 5080 with no prompts, and `curl` against `/accounts` gives 200 with no redirect;
   - after an upload, stopping and restarting the service keeps $4,820.50;
   - `dotnet clean` then running again gives $5,000.00;

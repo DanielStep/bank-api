@@ -1,6 +1,6 @@
 # Design Summary
 
-The agreed design for the Mable back end code challenge, from the design interview on 30/09/2026. See [design-interview.md](./design-interview.md) for the reasoning and research behind each decision. Domain terms follow [CONTEXT.md](../../CONTEXT.md).
+The agreed design for the Mable back end code challenge, from the design interview on 30/09/2026. See [design-interview.md](./design-interview.md) for the reasoning and research behind each decision. Domain terms follow [CONTEXT.md](../CONTEXT.md).
 
 ## Goal
 
@@ -21,10 +21,10 @@ src/Bank.Domain/                 no dependencies
 src/Bank.Application/            → Domain
 src/Bank.Data/                   → Domain
 src/Bank.Api/                    → Application, Data (composition root)
-spec/Bank.Domain.Specs/
-spec/Bank.Application.Specs/
-spec/Bank.Data.Specs/
-spec/Bank.Api.Specs/
+tests/Bank.Domain.Specs/
+tests/Bank.Application.Specs/
+tests/Bank.Data.Specs/
+tests/Bank.Api.Specs/
 ```
 
 ## Domain (written first, test-first)
@@ -207,7 +207,7 @@ The work is delivered as one OpenSpec change. Its `tasks.md` has four task group
 | 3 | Data | [Data](#data): `FileAccountRepository`, copying the balances CSV into the build output, and the Data specs. |
 | 4 | Api and README | [Api](#api-minimal-api-no-mediator-library): both endpoints and hosting, the Api specs, the headline acceptance spec, and the [README](#readme-contents). |
 
-Each group adds only its own layer's `src/` and `spec/` projects to the solution.
+Each group adds only its own layer's `src/` and `tests/` projects to the solution.
 
 ## Before building
 
