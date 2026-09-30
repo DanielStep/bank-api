@@ -56,13 +56,13 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
 
 ## 4. Api and README
 
-- [ ] 4.1 Create `src/Bank.Api` (web, → Application and Data) with `appsettings.json` `Urls` = `http://localhost:5080`, no `launchSettings.json` and no HTTPS redirection (D11). Wire up the DI (repository on `AppContext.BaseDirectory`, handlers) and the startup `GetAll()` check (D10). Create `spec/Bank.Api.Specs` with `Microsoft.AspNetCore.Mvc.Testing` and the temporary-file factory (D13), and add both to `BankApi.slnx`. Verify: `dotnet build` succeeds and `src/Bank.Api/bin/Debug/net10.0/mable_account_balances.csv` exists.
-- [ ] 4.2 Spec then build `GET /accounts` (D12), covering the `bank-api` spec's balance scenarios:
+- [x] 4.1 Create `src/Bank.Api` (web, → Application and Data) with `appsettings.json` `Urls` = `http://localhost:5080`, no `launchSettings.json` and no HTTPS redirection (D11). Wire up the DI (repository on `AppContext.BaseDirectory`, handlers) and the startup `GetAll()` check (D10). Create `spec/Bank.Api.Specs` with `Microsoft.AspNetCore.Mvc.Testing` and the temporary-file factory (D13), and add both to `BankApi.slnx`. Verify: `dotnet build` succeeds and `src/Bank.Api/bin/Debug/net10.0/mable_account_balances.csv` exists.
+- [x] 4.2 Spec then build `GET /accounts` (D12), covering the `bank-api` spec's balance scenarios:
   - opening Balances in file order as a JSON array of `accountNumber` strings and `balance` numbers;
   - Balances after an upload;
   - the service refuses to start on a malformed or duplicate balances file.
   - Verify: the `GetAccountsSpec` contexts pass.
-- [ ] 4.3 Spec then build `POST /transfer-batches` (D12), covering the `bank-api` spec's upload scenarios:
+- [x] 4.3 Spec then build `POST /transfer-batches` (D12), covering the `bank-api` spec's upload scenarios:
   - the sample upload gives 200;
   - no file gives 400;
   - line endings;
@@ -73,8 +73,8 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
   - every Transfer Rejected still gives 200;
   - the same file uploaded twice gives $4,641.00.
   - Verify: the `PostTransferBatchesSpec` contexts pass.
-- [ ] 4.4 Spec the `bank-api` spec's "Two uploads arrive together" scenario: two uploads of the sample file started together with `Task.WhenAll` both return 200, and 1111234522226789 ends at $4,641.00. Verify: the context passes.
-- [ ] 4.5 Write the headline acceptance spec: the real `mable_account_balances.csv` + `mable_transactions.csv` settle all four lines in order, reject none, and give the five closing Balances in the design summary's table. Verify: `HeadlineAcceptanceSpec` passes and the whole `dotnet test` run is green.
+- [x] 4.4 Spec the `bank-api` spec's "Two uploads arrive together" scenario: two uploads of the sample file started together with `Task.WhenAll` both return 200, and 1111234522226789 ends at $4,641.00. Verify: the context passes.
+- [x] 4.5 Write the headline acceptance spec: the real `mable_account_balances.csv` + `mable_transactions.csv` settle all four lines in order, reject none, and give the five closing Balances in the design summary's table. Verify: `SampleFileIntegrationSpec` passes and the whole `dotnet test` run is green.
 - [ ] 4.6 Write `README.md` from the design summary's README contents:
   - `dotnet run --project src/Bank.Api`
   - `curl -F file=@mable_transactions.csv http://localhost:5080/transfer-batches` and `curl http://localhost:5080/accounts`
