@@ -2,7 +2,7 @@
 
 A console batch job for one Company. It loads the Company's Account Balances from one CSV file, settles the day's Transfer Batch from another, and writes the closing Balances back, so that no Account ever goes below $0.
 
-Built with .NET 10
+Built with .NET 10, using Claude + OpenSpec with implementation steered and refactored.
 
 ## Install .NET 10
 
