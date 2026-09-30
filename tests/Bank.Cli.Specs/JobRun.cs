@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Bank.Application;
+using Bank.Data;
 
 namespace Bank.Cli.Specs;
 
@@ -17,7 +19,8 @@ class JobRun : IDisposable
 
         var output = new StringWriter();
         var error = new StringWriter();
-        ExitCode = new SettlementJob(output, error).Run([BalancesPath, TransfersPath]);
+        var handler = new SettleTransferBatchHandler(new FileAccountRepository(BalancesPath));
+        ExitCode = new SettlementJob(handler, output, error).Run(BalancesPath, TransfersPath);
         Output = output.ToString();
         Error = error.ToString();
     }

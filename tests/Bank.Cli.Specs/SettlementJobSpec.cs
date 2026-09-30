@@ -2,25 +2,6 @@ namespace Bank.Cli.Specs;
 
 public class SettlementJobSpec
 {
-    public class when_it_is_not_given_two_files
-    {
-        readonly StringWriter error = new();
-        readonly int exitCode;
-
-        public when_it_is_not_given_two_files()
-        {
-            exitCode = new SettlementJob(new StringWriter(), error).Run(["balances.csv"]);
-        }
-
-        [Fact]
-        public void it_exits_with_1() =>
-            exitCode.ShouldBe(1);
-
-        [Fact]
-        public void it_prints_the_usage() =>
-            error.ToString().ShouldStartWith("Usage:");
-    }
-
     public class when_a_line_is_malformed : IDisposable
     {
         readonly JobRun run = new(Samples.Balances,

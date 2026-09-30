@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Bank.Application;
-using Bank.Data;
 using Bank.Domain;
 
 namespace Bank.Cli;
@@ -9,26 +8,22 @@ public class SettlementJob
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
+    private readonly SettleTransferBatchHandler handler;
     private readonly TextWriter output;
     private readonly TextWriter error;
 
-    public SettlementJob(TextWriter output, TextWriter error)
+    public SettlementJob(SettleTransferBatchHandler handler, TextWriter output, TextWriter error)
     {
+        this.handler = handler;
         this.output = output;
         this.error = error;
     }
 
-    public int Run(string[] args)
+    public int Run(string balancesPath, string transfersPath)
     {
-        if (args.Length != 2)
-        {
-            error.WriteLine("Usage: Bank.Cli <balances.csv> <transfers.csv>");
-            return 1;
-        }
-
         try
         {
-            return Settle(args[0], args[1]);
+            return Settle(balancesPath, transfersPath);
         }
         catch (Exception e) when (e is IOException or InvalidDataException)
         {
@@ -39,7 +34,6 @@ public class SettlementJob
 
     private int Settle(string balancesPath, string transfersPath)
     {
-        var handler = new SettleTransferBatchHandler(new FileAccountRepository(balancesPath));
         var outcome = handler.Handle(new SettleTransferBatchCommand(File.ReadAllText(transfersPath)));
         if (outcome.Errors.Count > 0)
         {

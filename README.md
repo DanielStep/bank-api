@@ -42,6 +42,7 @@ dotnet test
 - Console batch job, because the brief asks for a system that loads the Balances and then accepts a day's Transfers. The two files are passed as arguments.
 - Persistance and provision of account balance in csv file for simplicity. Repository pattern used to easily swap in SQLite database.
 - Simplified CQRS pattern used to encapulate application logic with single responsbility; no need for a mediator pattern yet.
+- Dependencies are wired in a `Microsoft.Extensions.DependencyInjection` container in `Program.cs`, the composition root.
 
 ## Known limitations
 

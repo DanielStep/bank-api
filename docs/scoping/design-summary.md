@@ -147,7 +147,7 @@ How `Settle` runs:
 
 ## Cli (console batch job, no mediator library)
 
-- **`dotnet run --project src/Bank.Cli -- <balances.csv> <transfers.csv>`**. `SettlementJob` builds the repository on the balances file and calls the Application handler directly.
+- **`dotnet run --project src/Bank.Cli -- <balances.csv> <transfers.csv>`**. `Program.cs` is the composition root. It checks for exactly two arguments, then registers `FileAccountRepository` on the balances file, the Application handler and `SettlementJob` in a `Microsoft.Extensions.DependencyInjection` container, and resolves the job. `SettlementJob` gets the handler through its constructor and calls it directly.
   - **Exit 0:** the Transfer Batch file is well-formed. This holds even if every Transfer is Rejected. The job prints a JSON report, then the updated balances file.
     `line` in the report is the Transfer's Position, named for the person reading the file.
     ```json
@@ -169,7 +169,7 @@ How `Settle` runs:
   - **Domain:** pure, no fakes. Value object rules, Account overdraft guard, every rejection reason and their precedence order, retrying Unsettled Transfers and later settlement, knock-on failures, cycles, order-dependence, stopping.
   - **Application:** parser rows and errors; the command with an in-memory `IAccountRepository` fake, checking that it maps, calls the domain and saves (without re-testing the settlement rules).
   - **Data:** the file repository against a temporary file: round-trip and malformed-file handling.
-  - **Cli:** `SettlementJob` in-process, each spec on its own temporary balances and Transfer Batch files: exit 0 with the report and updated balances file on the happy path, exit 1 on a parse error, a malformed balances file or missing arguments.
+  - **Cli:** `SettlementJob` in-process, each spec on its own temporary balances and Transfer Batch files: exit 0 with the report and updated balances file on the happy path, exit 1 on a parse error or a malformed balances file. The specs build the handler themselves; the argument check and the container wiring in `Program.cs` have no spec.
 - **Headline acceptance spec:** the repo's `mable_transactions.csv`, settled against the opening balances from the brief, gives these closing balances. It never reads `mable_account_balances.csv`, which the job overwrites.
 
 | Account | Closing |
