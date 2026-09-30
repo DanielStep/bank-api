@@ -29,6 +29,71 @@ spec/Bank.Api.Specs/
 
 ## Domain (written first, test-first)
 
+```
+                 ┌─────────────────────────────────────────────┐
+                 │ TransferBatch                               │
+                 │  Transfers : [Transfer]  (in Position order)│
+                 │                                             │
+                 │  Settle(Accounts) → SettlementResult        │
+                 │   • passes, ordering, Account lookup        │
+                 │   • never reads a Balance itself            │
+                 └─────┬──────────────────┬───────────┬────────┘
+                       │ 1..*             │ uses      │ returns
+                       ▼                  │           ▼
+ ┌─────────────────────────────────────┐  │  ┌──────────────────────────────┐
+ │ Transfer                            │  │  │ SettlementResult             │
+ │  SendingAccount   : AccountNumber   │  │  │  Settled  : [Transfer]       │
+ │  ReceivingAccount : AccountNumber   │  │  │    (in settle order)         │
+ │  Requested : decimal (any sign)     │  │  │  Rejected : [Transfer]       │
+ │  Amount    : Money   (only if > 0)  │  │  │    (each with its reason)    │
+ │  Position  : int     (1-based)      │  │  │  Accounts : Accounts         │
+ │  Status    : TransferStatus         │  │  └──────────────────────────────┘
+ │                                     │  ▼
+ │  Create(...)   own-field rules:     │  ┌──────────────────────────────────┐
+ │   1. Requested ≤ 0                  │  │ Accounts                         │
+ │        → Rejected(NonPositiveAmount)│  │  Dictionary<AccountNumber,       │
+ │   2. Sending == Receiving           │  │             Account>             │
+ │        → Rejected(SameAccount)      │  │  ctor: refuses duplicate numbers │
+ │                                     │  │  Find(AccountNumber) → Account?  │
+ │  SettleBetween(sending, receiving)  │  └────────────────┬─────────────────┘
+ │   sending.TryWithdraw(Amount)       │                   │ 0..*
+ │    true  → receiving.Deposit        │                   ▼
+ │            → Settled                │  ┌──────────────────────────────────┐
+ │    false → Deferred                 │─►│ Account  (entity)                │
+ └──────┬──────────────────────────────┘  │  Number  : AccountNumber         │
+        │                                 │  Balance : Money                 │
+        ▼                                 │  TryWithdraw(Money) → bool       │
+ ┌─────────────────────────────┐          │   false if Balance would go < $0 │
+ │ TransferStatus              │          │  Deposit(Money)                  │
+ │  Settled                    │          └──────┬────────────────────┬──────┘
+ │  Deferred                   │                 ▼                    ▼
+ │  Rejected(RejectionReason)  │   ┌────────────────────┐ ┌─────────────────────┐
+ └──────┬──────────────────────┘   │ AccountNumber (VO) │ │ Money (VO)          │
+        ▼                          │  string, 16 digits │ │  decimal, ≥ 0, ≤ 2dp│
+ ┌───────────────────────────────┐ └────────────────────┘ │  AUD assumed        │
+ │ RejectionReason, precedence   │                        └─────────────────────┘
+ │  1. NonPositiveAmount   Create│
+ │  2. SameAccount         Create│ ┌──────────────────────────────────┐
+ │  3. UnknownSendingAccount     │ │ «interface» IAccountRepository   │
+ │  4. UnknownReceivingAccount   │ │  GetAll()          → Accounts    │
+ │  5. InsufficientFunds   end   │ │  SaveAll(Accounts)               │
+ └───────────────────────────────┘ └──────────────────────────────────┘
+                                     implemented in Data (FileAccountRepository)
+```
+
+How `Settle` runs:
+
+```
+ Pass 1, in Position order:
+   Rejected at Create?        → skip, and report as Rejected
+   Find(Sending) is null      → Rejected(UnknownSendingAccount)
+   Find(Receiving) is null    → Rejected(UnknownReceivingAccount)
+   else SettleBetween(...)    → Settled | Deferred
+
+ Pass 2..n: retry the Deferred Transfers, in Position order
+ Stop when a Pass settles nothing → the rest are Rejected(InsufficientFunds)
+```
+
 - **`AccountNumber`** (value object): exactly 16 digits, stored as a string.
 - **`Money`** (value object): non-negative, at most 2 decimal places, single currency (AUD assumed).
 - **`Account`** (entity): has an `AccountNumber` and a balance (`Money`, so never negative). It owns the $0 floor, and is the only place that rule lives:
@@ -52,7 +117,10 @@ spec/Bank.Api.Specs/
     - Otherwise the batch calls `transfer.SettleBetween(sending, receiving)`, which Settles or Defers it. The batch never reads a Balance itself.
   - **Later passes** retry the Deferred Transfers in their original order.
   - Settlement **stops** when a pass settles nothing. Anything still Deferred is Rejected as `InsufficientFunds`.
-  - **Result:** the Settled Transfers (in the order they settled), the Rejected Transfers with reasons, and the updated Accounts.
+  - **Returns a `SettlementResult`:**
+    - `Settled`: the Settled Transfers, in the order they settled.
+    - `Rejected`: the Rejected Transfers, each with its Rejection Reason.
+    - `Accounts`: the updated Accounts.
 - **Rejection reasons**, in precedence order: `NonPositiveAmount`, `SameAccount`, `UnknownSendingAccount`, `UnknownReceivingAccount`, `InsufficientFunds`. A Rejected Transfer reports only the first reason that applies.
 - **`IAccountRepository`**: `GetAll()` returns `Accounts`, and `SaveAll(Accounts)` writes them back.
 
@@ -68,7 +136,7 @@ spec/Bank.Api.Specs/
   1. Parse the CSV; any error → an error result.
   2. Map the rows to domain Transfers, so the CSV never reaches the domain.
   3. Load the Accounts, call `batch.Settle(accounts)` with the `Accounts` from the repository, then save.
-  4. Return the outcome.
+  4. Return the `SettlementResult`.
   - A `SemaphoreSlim` makes sure only one settlement runs at a time.
 - **Get-accounts query + handler**: returns the current balances.
 

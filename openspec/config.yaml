@@ -1,15 +1,34 @@
 schema: gherkin
 
 context: |
+  The agreed design is docs/design/design-summary.md. It is authoritative:
+  follow it exactly and do not re-decide anything it settles. If something
+  it doesn't cover would change behaviour or structure, ask instead of guessing.
+  docs/design/design-interview.md is the reasoning behind it. Some interview
+  rows were later amended, so where the two differ, the summary wins.
   Domain language is defined in CONTEXT.md - use its terms exactly (Company,
-  Account, Balance, Transfer, Transfer Batch, Settlement, Settled, Deferred,
-  Rejected) and never the listed "Avoid" words. Architecture decisions are in
-  docs/adr/. The original brief is docs/MABLE_BACK_END_CODE_TEST.md.
+  Account, Balance, Transfer, Transfer Batch, Position, Sending Account,
+  Receiving Account, Settlement, Pass, Settled, Deferred, Rejected, Rejection
+  Reason) and never the listed "Avoid" words. Architecture decisions are in
+  docs/adr/.
+  The original brief is docs/MABLE_BACK_END_CODE_TEST.md (local only, not in
+  git). Only its scenario, sample files and rubric are requirements. Its
+  "Detailed Specification" and "Architecture" sections are superseded by the
+  design summary: no FastEndpoints, no NSpec, no separate CSV validator.
 
 rules:
+  proposal:
+    - Scope and capabilities must match docs/design/design-summary.md
   specs:
     - Write every scenario as a fenced ```gherkin block under its `#### Scenario:` header
     - Gherkin steps use CONTEXT.md domain terms; amounts in dollars and cents, account numbers as 16-digit strings
+    - Specs state observable behaviour only; class and method names belong in design.md
+  design:
+    - Always write design.md, taking the solution layout, domain model and API shape from docs/design/design-summary.md
+    - Reference the design summary rather than restating it; record only decisions it leaves open
+  tasks:
+    - Domain first and test-first, as the design summary requires; each task writes the failing spec before the code
+    - Specs use xUnit v3 and Shouldly with nested describe/context/it classes (ADR 0002)
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.
