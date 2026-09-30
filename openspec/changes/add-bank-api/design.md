@@ -19,26 +19,28 @@ Environment: .NET SDK 10.0.111 is now installed at `/usr/share/dotnet/sdk`, so t
 ## Decisions
 
 ### D1. Unsettled replaces Deferred (amends the summary)
-`TransferStatus` is `Unsettled`, `Settled` or `Rejected(RejectionReason)`. `Transfer.Create` returns a Transfer that is either Rejected (the `NonPositiveAmount` and `SameAccount` checks) or Unsettled. `SettleBetween` leaves it Unsettled when `TryWithdraw` returns false. `TransferBatch.Settle` runs Pass 1 over every Unsettled Transfer, then keeps retrying the Unsettled ones until a Pass settles nothing, and finally Rejects whatever is still Unsettled as `InsufficientFunds`.
+`TransferStatus` is `Unsettled`, `Settled` or `Rejected`. The `Transfer` constructor gives a Transfer that is either Rejected (the `NonPositiveAmount` and `SameAccount` checks) or Unsettled. `SettleBetween` leaves it Unsettled when `TryWithdraw` returns false. `TransferBatch.Settle` runs Pass 1 over every Unsettled Transfer, then keeps retrying the Unsettled ones until a Pass settles nothing, and finally Rejects whatever is still Unsettled as `InsufficientFunds`.
 - *Why:* the summary's three statuses had no state for a Transfer that has passed its own checks but has not yet been tried. The user chose to replace Deferred rather than add a fourth status, so each status now means one thing.
 - *Alternatives:* adding Unsettled next to Deferred (a status for an untried Transfer as well as one for a short one, and both mean "try again"), or a nullable status (every caller would have to handle null).
 - CONTEXT.md, the design summary, ADR 0001, `openspec/config.yaml` and the interview log (Q34) have been updated to match.
 
-`TransferStatus` is modelled as an abstract record with three sealed subtypes. Only `Rejected` carries a `RejectionReason`, which is an enum declared in precedence order.
+`TransferStatus` is a plain enum. A Rejected Transfer's reason is held in `Transfer.Reason`, a nullable `RejectionReason` that is set only when the Transfer is Rejected. `RejectionReason` is an enum declared in precedence order. The Transfer is built with an ordinary constructor, not a static `Create`, like the value objects (D4).
+- *Why:* an enum plus one nullable property is simpler to read than an abstract record with sealed subtypes.
 
 ### D2. SettlementResult orders its Rejected Transfers by Position
-`Settled` keeps the order in which Transfers settled, as the summary says. `Rejected` is sorted by Position (the user's decision), so a Transfer Rejected at `Create` on line 4 is listed after one Rejected for `InsufficientFunds` on line 2. The sort happens in the domain, so the Api just maps the lists in order.
+`Settled` keeps the order in which Transfers settled, as the summary says. `Rejected` is sorted by Position (the user's decision), so a Transfer Rejected when it was created on line 4 is listed after one Rejected for `InsufficientFunds` on line 2. The sort happens in the domain, so the Api just maps the lists in order.
 
 ### D3. Accounts enumerate in the order they were given
-`Accounts` keeps the `Dictionary<AccountNumber, Account>` the summary asks for, for `Find`, and also keeps the constructor's list so that it enumerates in balances-file order. The Api's `balances` list, `GET /accounts` and the rewritten balances file all follow that order.
+`Accounts` keeps the `Dictionary<AccountNumber, Account>` the summary asks for, for `Find`, and also keeps the constructor's list, exposed as `All`, so that it lists the Accounts in balances-file order. The Api's `balances` list, `GET /accounts` and the rewritten balances file all follow that order.
 - *Why:* insertion order is not part of `Dictionary`'s contract, but the specs promise file order.
 - *Alternative:* the generic `OrderedDictionary<TKey,TValue>` in .NET 9 and later. It was rejected because the summary names `Dictionary`.
 
-### D4. Value objects validate with `Create`/`TryCreate`, and the parser reuses the rules
-- `AccountNumber.Create(string)` throws `ArgumentException` unless the value is exactly 16 ASCII digits. `AccountNumber.TryCreate(string, out AccountNumber)` also exists. `AccountNumber` is a `readonly record struct` with value equality, so it works as a dictionary key.
-- `Money.Create(decimal)` throws `ArgumentException` when the value is below 0 or has a scale above 2. `Money` supports `+` and `-`, and `-` is used only after `TryWithdraw` has checked the Balance.
+### D4. Value objects validate in their constructors, and the parser reuses the rules
+- `new AccountNumber(string)` throws `ArgumentException` unless the value is exactly 16 ASCII digits. `AccountNumber.IsValid(string)` checks the same rule without throwing. `AccountNumber` is a `readonly record struct` with value equality, so it works as a dictionary key.
+- `new Money(decimal)` throws `ArgumentException` when the value is below 0 or has a scale above 2. `Money.IsValid(decimal)` checks the same rule without throwing. `Money` has `Add` and `Subtract` methods, and `Subtract` is used only after `TryWithdraw` has checked the Balance.
+- *Why constructors:* a throwing constructor plus a static `IsValid` is simpler to read than static `Create`/`TryCreate` factories, and keeps each rule in one place.
 - "More than 2 decimal places" means the parsed `decimal`'s **scale**, so `5.100` is refused and never rounded, in line with Q7.
-- `TransferCsvParser` checks account numbers with `AccountNumber.TryCreate`, so the 16-digit rule lives in one place. It parses amounts itself, because a Transfer's amount may be negative and `Money` may not.
+- `TransferCsvParser` checks account numbers with `AccountNumber.IsValid`, so the 16-digit rule lives in one place. It parses amounts itself, because a Transfer's amount may be negative and `Money` may not.
 
 ### D5. How strictly the CSVs are parsed
 Both CSV readers (the Transfer parser and the balances file) work the same way:
@@ -50,9 +52,10 @@ Both CSV readers (the Transfer parser and the balances file) work the same way:
 - The parser reports **every** malformed line, not just the first.
 
 ### D6. Application result types
-- `TransferCsvParser.Parse(string)` returns a `ParseResult`, either `Rows(IReadOnlyList<TransferRow>)` or `Errors(IReadOnlyList<CsvError>)`, where `CsvError` is `(int Line, string Message)`.
-- `SettleTransferBatchHandler.Handle(SettleTransferBatchCommand)` returns `SettleTransferBatchOutcome`, either `Settled(SettlementResult)` or `Malformed(IReadOnlyList<CsvError>)`.
-- Both are small abstract records with sealed subtypes, and the endpoint `switch`es on them. There is no Result library.
+- `TransferCsvParser.Parse(string)` returns a `ParseResult` with two lists, `Rows` (`TransferRow`s) and `Errors` (`CsvError`s, each with an `int Line` and a `string Message`). When `Errors` is not empty, `Rows` is empty.
+- `SettleTransferBatchHandler.Handle(SettleTransferBatchCommand)` returns a `SettleTransferBatchOutcome` with a nullable `Result` (`SettlementResult`) and an `Errors` list. `Result` is null exactly when `Errors` is not empty.
+- Both are plain classes, and callers check `Errors.Count > 0`. There is no Result library.
+- *Why plain classes:* simpler to read than abstract records with sealed subtypes and a `switch`, in line with D1 and D4.
 - The command carries the CSV text as a `string`. The endpoint reads the uploaded file with a `StreamReader`, so the Application layer never sees `IFormFile`.
 
 ### D7. One lock for every read and write of the balances file

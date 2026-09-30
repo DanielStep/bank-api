@@ -48,8 +48,9 @@ spec/Bank.Api.Specs/
  │  Amount    : Money   (only if > 0)  │  │  │    (each with its reason)    │
  │  Position  : int     (1-based)      │  │  │  Accounts : Accounts         │
  │  Status    : TransferStatus         │  │  └──────────────────────────────┘
+ │  Reason    : RejectionReason?       │  │
  │                                     │  ▼
- │  Create(...)   own-field rules:     │  ┌──────────────────────────────────┐
+ │  constructor   own-field rules:     │  ┌──────────────────────────────────┐
  │   1. Requested ≤ 0                  │  │ Accounts                         │
  │        → Rejected(NonPositiveAmount)│  │  Dictionary<AccountNumber,       │
  │   2. Sending == Receiving           │  │             Account>             │
@@ -64,16 +65,16 @@ spec/Bank.Api.Specs/
         │                                 │  Balance : Money                 │
         ▼                                 │  TryWithdraw(Money) → bool       │
  ┌─────────────────────────────┐          │   false if Balance would go < $0 │
- │ TransferStatus              │          │  Deposit(Money)                  │
+ │ TransferStatus (enum)       │          │  Deposit(Money)                  │
  │  Settled                    │          └──────┬────────────────────┬──────┘
- │  Unsettled (from Create)    │                 ▼                    ▼
- │  Rejected(RejectionReason)  │   ┌────────────────────┐ ┌─────────────────────┐
+ │  Unsettled (when created)   │                 ▼                    ▼
+ │  Rejected (sets Reason)     │   ┌────────────────────┐ ┌─────────────────────┐
  └──────┬──────────────────────┘   │ AccountNumber (VO) │ │ Money (VO)          │
         ▼                          │  string, 16 digits │ │  decimal, ≥ 0, ≤ 2dp│
  ┌───────────────────────────────┐ └────────────────────┘ │  AUD assumed        │
  │ RejectionReason, precedence   │                        └─────────────────────┘
- │  1. NonPositiveAmount   Create│
- │  2. SameAccount         Create│ ┌──────────────────────────────────┐
+ │  1. NonPositiveAmount   ctor  │
+ │  2. SameAccount         ctor  │ ┌──────────────────────────────────┐
  │  3. UnknownSendingAccount     │ │ «interface» IAccountRepository   │
  │  4. UnknownReceivingAccount   │ │  GetAll()          → Accounts    │
  │  5. InsufficientFunds   end   │ │  SaveAll(Accounts)               │
@@ -85,7 +86,7 @@ How `Settle` runs:
 
 ```
  Pass 1, in Position order:
-   Rejected at Create?        → skip, and report as Rejected
+   Rejected when created?     → skip, and report as Rejected
    Find(Sending) is null      → Rejected(UnknownSendingAccount)
    Find(Receiving) is null    → Rejected(UnknownReceivingAccount)
    else SettleBetween(...)    → Settled | stays Unsettled
@@ -102,11 +103,12 @@ How `Settle` runs:
 - **`Transfer`**: has a `SendingAccount` and a `ReceivingAccount` (both `AccountNumber`s), a requested amount, a Position and a status.
   - The **Position** is the Transfer's 1-based place in the Transfer Batch. The domain never sees CSV line numbers.
   - The **requested amount** is a `decimal` of any sign, exactly as the Company wrote it, so a Rejected Transfer can always report it.
-  - `Transfer.Create(...)` checks the rules that need only the Transfer itself, and sets the status to **Rejected** with the first that fails:
+  - The `Transfer` constructor checks the rules that need only the Transfer itself, and sets the status to **Rejected** with the first that fails:
     1. `NonPositiveAmount`: the requested amount is ≤ 0.
     2. `SameAccount`: the Sending and Receiving Account are the same.
   - Otherwise the Transfer also holds the amount as `Money`. That `Money` is only created once the amount is known to be positive, so it can't fail.
-  - The Transfer owns its status. `SettleBetween(sending, receiving)` calls `sending.TryWithdraw(amount)`: on success it deposits to the Receiving Account and becomes **Settled**; otherwise it stays **Unsettled**. A Transfer that passes `Create`'s checks starts **Unsettled**.
+  - The Transfer owns its status. `SettleBetween(sending, receiving)` calls `sending.TryWithdraw(amount)`: on success it deposits to the Receiving Account and becomes **Settled**; otherwise it stays **Unsettled**. A Transfer that passes the constructor's checks starts **Unsettled**.
+  - `TransferStatus` is a plain enum (`Unsettled`, `Settled`, `Rejected`). A Rejected Transfer's reason is in its `Reason` property, which is null otherwise.
 - **`Accounts`**: the Company's Accounts, backed by a `Dictionary<AccountNumber, Account>`.
   - The constructor refuses a list that holds the same Account number twice.
   - `Find(AccountNumber)` returns the Account, or null when it's unknown.

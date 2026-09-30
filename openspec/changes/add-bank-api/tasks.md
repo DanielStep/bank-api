@@ -4,19 +4,19 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
 
 ## 1. Domain
 
-- [ ] 1.1 Create `global.json` (SDK 10.0 with `rollForward: latestFeature`, `test.runner: Microsoft.Testing.Platform`), `Directory.Build.props` (D14), `BankApi.slnx`, `src/Bank.Domain` (class library, no references) and `spec/Bank.Domain.Specs` (xunit.v3 4.x + Shouldly, `OutputType=Exe`) with one placeholder spec. Verify: `dotnet build BankApi.slnx` succeeds and `dotnet test` runs and passes the placeholder spec.
-- [ ] 1.2 Spec then build `AccountNumber` (D4): accepts exactly 16 digits, keeps leading zeros, refuses 15 digits, 17 digits and non-digits, and compares by value. Verify: the `AccountNumberSpec` contexts pass.
-- [ ] 1.3 Spec then build `Money` (D4): accepts $0.00 and 2-dp values, refuses negative values and a scale above 2 (including `5.100`), and adds and subtracts. Verify: the `MoneySpec` contexts pass.
-- [ ] 1.4 Spec then build `Account`: `TryWithdraw` succeeds down to exactly $0.00; one cent short returns false and leaves the Balance unchanged; `Deposit` always adds. Verify: the `AccountSpec` contexts pass.
-- [ ] 1.5 Spec then build `Accounts` (D3): `Find` returns the Account or null, enumerates in constructor order, and the constructor refuses a duplicate account number. Verify: the `AccountsSpec` contexts pass.
-- [ ] 1.6 Spec then build `RejectionReason`, `TransferStatus` (Unsettled, Settled, Rejected; D1) and `Transfer.Create`:
+- [x] 1.1 Create `global.json` (SDK 10.0 with `rollForward: latestFeature`, `test.runner: Microsoft.Testing.Platform`), `Directory.Build.props` (D14), `BankApi.slnx`, `src/Bank.Domain` (class library, no references) and `spec/Bank.Domain.Specs` (xunit.v3 4.x + Shouldly, `OutputType=Exe`) with one placeholder spec. Verify: `dotnet build BankApi.slnx` succeeds and `dotnet test` runs and passes the placeholder spec.
+- [x] 1.2 Spec then build `AccountNumber` (D4): accepts exactly 16 digits, keeps leading zeros, refuses 15 digits, 17 digits and non-digits, and compares by value. Verify: the `AccountNumberSpec` contexts pass.
+- [x] 1.3 Spec then build `Money` (D4): accepts $0.00 and 2-dp values, refuses negative values and a scale above 2 (including `5.100`), and adds and subtracts. Verify: the `MoneySpec` contexts pass.
+- [x] 1.4 Spec then build `Account`: `TryWithdraw` succeeds down to exactly $0.00; one cent short returns false and leaves the Balance unchanged; `Deposit` always adds. Verify: the `AccountSpec` contexts pass.
+- [x] 1.5 Spec then build `Accounts` (D3): `Find` returns the Account or null, enumerates in constructor order, and the constructor refuses a duplicate account number. Verify: the `AccountsSpec` contexts pass.
+- [x] 1.6 Spec then build `RejectionReason`, `TransferStatus` (Unsettled, Settled, Rejected; D1) and the `Transfer` constructor:
   - `NonPositiveAmount` for $0.00 and −$5.00, and `SameAccount`; `NonPositiveAmount` wins when both apply.
   - Otherwise the Transfer is Unsettled and holds `Money`.
   - The requested amount is kept exactly as given.
-  - Verify: the `TransferSpec` → `Create` contexts pass.
-- [ ] 1.7 Spec then build `Transfer.SettleBetween`: with enough funds it moves the amount and becomes Settled; when short it moves nothing and stays Unsettled. Verify: the `TransferSpec` → `SettleBetween` contexts pass.
-- [ ] 1.8 Spec then build `TransferBatch.Settle` Pass 1 and `SettlementResult`, covering the `bank-api` spec's scenarios for the $0 floor, Position order on Pass 1, the rule Rejections (the outline, including a Transfer to an unknown Account that is not retried after the Sending Account is funded) and precedence (the outline). Verify: those `TransferBatchSpec` → `Settle` contexts pass.
-- [ ] 1.9 Spec then extend `Settle` with later Passes and stopping, covering the `bank-api` spec's scenarios:
+  - Verify: the `TransferSpec` creation contexts pass.
+- [x] 1.7 Spec then build `Transfer.SettleBetween`: with enough funds it moves the amount and becomes Settled; when short it moves nothing and stays Unsettled. Verify: the `TransferSpec` → `SettleBetween` contexts pass.
+- [x] 1.8 Spec then build `TransferBatch.Settle` Pass 1 and `SettlementResult`, covering the `bank-api` spec's scenarios for the $0 floor, Position order on Pass 1, the rule Rejections (the outline, including a Transfer to an unknown Account that is not retried after the Sending Account is funded) and precedence (the outline). Verify: those `TransferBatchSpec` → `Settle` contexts pass.
+- [x] 1.9 Spec then extend `Settle` with later Passes and stopping, covering the `bank-api` spec's scenarios:
   - receives funds later
   - overtaking
   - Unsettled Transfers retried in Position order
@@ -24,14 +24,14 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
   - cycle
   - a Pass that settles something is followed by another Pass
   - Verify: those contexts pass, and a spec with N mutually dependent Transfers finishes.
-- [ ] 1.10 Spec then build the `SettlementResult` ordering (D2): Settled in settle order and Rejected in Position order, each with its reason and requested amount, plus the closing Accounts ("Outcomes are reported in their documented order"). Verify: the context passes.
-- [ ] 1.11 Add the `IAccountRepository` interface (`GetAll() → Accounts`, `SaveAll(Accounts)`) to `Bank.Domain`; it has no behaviour to spec. Verify: `dotnet build` succeeds and all `Bank.Domain.Specs` pass.
+- [x] 1.10 Spec then build the `SettlementResult` ordering (D2): Settled in settle order and Rejected in Position order, each with its reason and requested amount, plus the closing Accounts ("Outcomes are reported in their documented order"). Verify: the context passes.
+- [x] 1.11 Add the `IAccountRepository` interface (`GetAll() → Accounts`, `SaveAll(Accounts)`) to `Bank.Domain`; it has no behaviour to spec. Verify: `dotnet build` succeeds and all `Bank.Domain.Specs` pass.
 
 ## 2. Application
 
-- [ ] 2.1 Create `src/Bank.Application` (→ Domain) and `spec/Bank.Application.Specs`, and add both to `BankApi.slnx`. Verify: `dotnet build BankApi.slnx` succeeds.
-- [ ] 2.2 Spec then build the happy paths of `TransferCsvParser` and `ParseResult` (D5, D6): the sample file gives four `TransferRow`s with line numbers 1–4; LF, CRLF, and a last line with or without a line ending all parse; `-5.00` and `+5` parse. Verify: the `TransferCsvParserSpec` → `when_the_file_is_well_formed` contexts pass.
-- [ ] 2.3 Spec then build the `TransferCsvParser` errors (D5), one context per example in the `bank-api` spec's "A line is malformed" outline:
+- [x] 2.1 Create `src/Bank.Application` (→ Domain) and `spec/Bank.Application.Specs`, and add both to `BankApi.slnx`. Verify: `dotnet build BankApi.slnx` succeeds.
+- [x] 2.2 Spec then build the happy paths of `TransferCsvParser` and `ParseResult` (D5, D6): the sample file gives four `TransferRow`s with line numbers 1–4; LF, CRLF, and a last line with or without a line ending all parse; `-5.00` and `+5` parse. Verify: the `TransferCsvParserSpec` → `when_the_file_is_well_formed` contexts pass.
+- [x] 2.3 Spec then build the `TransferCsvParser` errors (D5), one context per example in the `bank-api` spec's "A line is malformed" outline:
   - two fields, four fields
   - a 15-digit account, a 17-digit account, a non-digit account
   - a non-numeric amount, a 3-dp amount, an empty amount
@@ -39,8 +39,8 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
   - Also cover: every malformed line reported; an empty file and a file holding only a line ending each give one error on line 1.
   - Verify: the `when_the_file_is_malformed` contexts pass.
 - [ ] 2.4 Spec then build `AccountsLock` (D7) and `SettleTransferBatchCommand` + handler + `SettleTransferBatchOutcome` (D6), against an in-memory `IAccountRepository` fake. Cover:
-  - a malformed CSV returns `Malformed` and never calls `SaveAll`;
-  - a well-formed CSV maps line → Position and from/to → Sending/Receiving Account, calls `Settle`, saves the resulting Accounts once, and returns `Settled`.
+  - a malformed CSV returns an outcome with `Errors` and no `Result`, and never calls `SaveAll`;
+  - a well-formed CSV maps line → Position and from/to → Sending/Receiving Account, calls `Settle`, saves the resulting Accounts once, and returns an outcome with the `Result` and no `Errors`.
   - Don't re-spec the settlement rules.
   - Verify: the `SettleTransferBatchHandlerSpec` contexts pass.
 - [ ] 2.5 Spec then build the get-accounts query + handler: it returns the fake's Accounts in order and takes the lock (D7). Verify: the `GetAccountsHandlerSpec` contexts pass and all `Bank.Application.Specs` pass.

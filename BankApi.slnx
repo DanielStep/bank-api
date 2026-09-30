@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Bank.Application/Bank.Application.csproj" />
+    <Project Path="src/Bank.Domain/Bank.Domain.csproj" />
+  </Folder>
+  <Folder Name="/spec/">
+    <Project Path="spec/Bank.Application.Specs/Bank.Application.Specs.csproj" />
+    <Project Path="spec/Bank.Domain.Specs/Bank.Domain.Specs.csproj" />
+  </Folder>
+</Solution>
