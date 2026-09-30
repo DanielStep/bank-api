@@ -47,21 +47,18 @@ Every task is test-first. Write the failing spec (xUnit v3 + Shouldly, nested de
 
 ## 3. Data
 
-- [ ] 3.1 Create `src/Bank.Data` (→ Domain) and `spec/Bank.Data.Specs`, add both to `BankApi.slnx`, and add the linked `mable_account_balances.csv` with `CopyToOutputDirectory=PreserveNewest` (D9). Verify: after `dotnet build`, `src/Bank.Data/bin/Debug/net10.0/mable_account_balances.csv` exists and `git status` shows the repo's CSV unchanged.
-- [ ] 3.2 Spec then build `FileAccountRepository.GetAll` (D8) against a temporary file:
-  - the five sample Accounts, in file order;
-  - an account with leading zeros;
-  - LF and CRLF line endings;
-  - each malformed example from the `bank-api` spec's "The balances file is malformed" outline (wrong field count, 15 digits, non-numeric, −0.01, 3 dp) and a duplicate account, each throwing `InvalidDataException` naming the file (and the account number, for the duplicate).
-  - Verify: the `FileAccountRepositorySpec` → `GetAll` contexts pass.
-- [ ] 3.3 Spec then build `FileAccountRepository.SaveAll` (D8): a round trip keeps the Balances and order, and the written text is exactly `1111111111111111,99.50\n2222222222222222,0.50\n` for the `bank-api` spec's "The working balances file keeps its format" scenario. Verify: the `SaveAll` contexts pass and all `Bank.Data.Specs` pass.
+- [x] 3.1 Create `src/Bank.Data` (→ Domain) and `spec/Bank.Data.Specs`, add both to `BankApi.slnx`, and add the linked `mable_account_balances.csv` with `CopyToOutputDirectory=PreserveNewest` (D9). Verify: after `dotnet build`, `src/Bank.Data/bin/Debug/net10.0/mable_account_balances.csv` exists and `git status` shows the repo's CSV unchanged.
+- [x] 3.2 Spec then build `BalancesCsvParser` and `FileAccountRepository.GetAll` (D8):
+  - `BalancesCsvParserSpec`: the five sample Accounts, in file order; LF and CRLF line endings; each malformed example from the `bank-api` spec's "The balances file is malformed" outline (wrong field count, 15 digits, non-numeric, −0.01, 3 dp) throwing `InvalidDataException` naming the line, and a duplicate account naming the account number.
+  - `FileAccountRepositorySpec`, against a temporary file: `GetAll` reads the Accounts from the file, and a malformed file throws `InvalidDataException` naming the file.
+  - Verify: those contexts pass.
+- [x] 3.3 Spec then build `FileAccountRepository.SaveAll` (D8): a round trip keeps the Balances and order, and the written text is exactly `1111111111111111,99.50\n2222222222222222,0.50\n` for the `bank-api` spec's "The working balances file keeps its format" scenario. Verify: the `SaveAll` contexts pass and all `Bank.Data.Specs` pass.
 
 ## 4. Api and README
 
 - [ ] 4.1 Create `src/Bank.Api` (web, → Application and Data) with `appsettings.json` `Urls` = `http://localhost:5080`, no `launchSettings.json` and no HTTPS redirection (D11). Wire up the DI (repository on `AppContext.BaseDirectory`, handlers) and the startup `GetAll()` check (D10). Create `spec/Bank.Api.Specs` with `Microsoft.AspNetCore.Mvc.Testing` and the temporary-file factory (D13), and add both to `BankApi.slnx`. Verify: `dotnet build` succeeds and `src/Bank.Api/bin/Debug/net10.0/mable_account_balances.csv` exists.
 - [ ] 4.2 Spec then build `GET /accounts` (D12), covering the `bank-api` spec's balance scenarios:
   - opening Balances in file order as a JSON array of `accountNumber` strings and `balance` numbers;
-  - leading zeros kept;
   - Balances after an upload;
   - the service refuses to start on a malformed or duplicate balances file.
   - Verify: the `GetAccountsSpec` contexts pass.

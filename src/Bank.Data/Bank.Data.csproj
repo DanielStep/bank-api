@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bank.Domain\Bank.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- The service works on this copy, so the repo's file is never modified and `dotnet clean` resets the balances. -->
+  <ItemGroup>
+    <None Include="..\..\mable_account_balances.csv" Link="mable_account_balances.csv" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
