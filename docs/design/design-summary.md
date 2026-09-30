@@ -31,35 +31,43 @@ spec/Bank.Api.Specs/
 
 - **`AccountNumber`** (value object): exactly 16 digits, stored as a string.
 - **`Money`** (value object): non-negative, at most 2 decimal places, single currency (AUD assumed).
-- **`Account`** (entity): has an `AccountNumber` and a balance (`Money`, so never negative). It takes money in and out, and refuses any withdrawal that would take the balance below $0.
-- **`Transfer`**: has a from Account number, a to Account number, a requested amount, a line number and a status.
+- **`Account`** (entity): has an `AccountNumber` and a balance (`Money`, so never negative). It owns the $0 floor, and is the only place that rule lives:
+  - `TryWithdraw(Money)` returns `false` and changes nothing when the withdrawal would take the balance below $0.
+  - `Deposit(Money)` always succeeds.
+- **`Transfer`**: has a `SendingAccount` and a `ReceivingAccount` (both `AccountNumber`s), a requested amount, a Position and a status.
+  - The **Position** is the Transfer's 1-based place in the Transfer Batch. The domain never sees CSV line numbers.
   - The **requested amount** is a `decimal` of any sign, exactly as the Company wrote it, so a Rejected Transfer can always report it.
-  - `Transfer.Create(...)` sets the status to **Rejected** (`NonPositiveAmount`) when the requested amount is ≤ 0.
+  - `Transfer.Create(...)` checks the rules that need only the Transfer itself, and sets the status to **Rejected** with the first that fails:
+    1. `NonPositiveAmount`: the requested amount is ≤ 0.
+    2. `SameAccount`: the Sending and Receiving Account are the same.
   - Otherwise the Transfer also holds the amount as `Money`. That `Money` is only created once the amount is known to be positive, so it can't fail.
-  - The Transfer owns its status; `Settle` moves it between Deferred, Settled and Rejected.
-- **`TransferBatch`**: the Transfers in submission order. `Settle(accounts)` does gross, multi-pass settlement ([ADR 0001](../adr/0001-gross-multi-pass-settlement.md)):
+  - The Transfer owns its status. `SettleBetween(sending, receiving)` calls `sending.TryWithdraw(amount)`: on success it deposits to the Receiving Account and becomes **Settled**; otherwise it becomes **Deferred**.
+- **`Accounts`**: the Company's Accounts, backed by a `Dictionary<AccountNumber, Account>`.
+  - The constructor refuses a list that holds the same Account number twice.
+  - `Find(AccountNumber)` returns the Account, or null when it's unknown.
+- **`TransferBatch`**: the Transfers in submission order. `Settle(Accounts)` does gross, multi-pass settlement ([ADR 0001](../adr/0001-gross-multi-pass-settlement.md)):
   - **Pass 1** walks the Transfers in order.
     - Already Rejected at creation → skipped, and reported with the other Rejected Transfers.
-    - Unknown sending Account, unknown receiving Account, or the same Account on both sides → **Rejected** straight away, never retried.
-    - The sender is short of funds → **Deferred**.
-    - Otherwise → **Settled**.
+    - `accounts.Find` returns null for the Sending Account → **Rejected** (`UnknownSendingAccount`); otherwise null for the Receiving Account → **Rejected** (`UnknownReceivingAccount`). Never retried.
+    - Otherwise the batch calls `transfer.SettleBetween(sending, receiving)`, which Settles or Defers it. The batch never reads a Balance itself.
   - **Later passes** retry the Deferred Transfers in their original order.
   - Settlement **stops** when a pass settles nothing. Anything still Deferred is Rejected as `InsufficientFunds`.
   - **Result:** the Settled Transfers (in the order they settled), the Rejected Transfers with reasons, and the updated Accounts.
-- **Rejection reasons:** `UnknownSendingAccount`, `UnknownReceivingAccount`, `SameAccount`, `NonPositiveAmount`, `InsufficientFunds`.
-- **`IAccountRepository`**: `GetAll()` and `SaveAll(accounts)`.
+- **Rejection reasons**, in precedence order: `NonPositiveAmount`, `SameAccount`, `UnknownSendingAccount`, `UnknownReceivingAccount`, `InsufficientFunds`. A Rejected Transfer reports only the first reason that applies.
+- **`IAccountRepository`**: `GetAll()` returns `Accounts`, and `SaveAll(Accounts)` writes them back.
 
 ## Application
 
-- **`TransferCsvParser`**: the only place the CSV is checked. It turns CSV text into `TransferRow`s (from, to and amount as primitives, plus the line number) or into line-numbered errors.
+- **`TransferCsvParser`**: the only place the CSV is checked. It turns CSV text into `TransferRow`s (from, to and amount as primitives, plus the line number; `from`/`to` are the file's words, and the command maps them to the Sending and Receiving Account) or into line-numbered errors.
   - The format is 3 columns with **no header row**, and CRLF and LF line endings are both accepted.
   - Errors include a wrong column count, an account number that isn't 16 digits, and an amount that isn't numeric or has more than 2 decimal places.
   - Any sign is allowed for the amount; the domain decides what to do with it.
+  - The command maps each row's line number to the Transfer's Position. They're always equal: there's no header row, and any parse error rejects the whole file.
   - There is no separate validator.
 - **`SettleTransferBatchCommand` + handler**:
   1. Parse the CSV; any error → an error result.
   2. Map the rows to domain Transfers, so the CSV never reaches the domain.
-  3. Load the Accounts, call `batch.Settle(accounts)`, then save.
+  3. Load the Accounts, call `batch.Settle(accounts)` with the `Accounts` from the repository, then save.
   4. Return the outcome.
   - A `SemaphoreSlim` makes sure only one settlement runs at a time.
 - **Get-accounts query + handler**: returns the current balances.
@@ -68,12 +76,13 @@ spec/Bank.Api.Specs/
 
 - **`FileAccountRepository`** implements `IAccountRepository`. It reads and writes a balances CSV (`account,balance`, no header) at a path passed in when the Api registers it.
 - The csproj copies `mable_account_balances.csv` (repo root) into the build output (`CopyToOutputDirectory=PreserveNewest`), and the repository works on that copy. The file in the repo is never modified, and `dotnet clean` resets the balances.
-- There's no seed-copy or safe-write logic. A malformed balances file, or one that lists an account twice, stops the app at startup.
+- There's no seed-copy or safe-write logic. A malformed balances file stops the app at startup, and so does one that lists an account twice, because building `Accounts` refuses it.
 
 ## Api (Minimal API, no mediator library)
 
 - **`POST /transfer-batches`**: `multipart/form-data` with one CSV file, and `.DisableAntiforgery()`. The endpoint injects the Application handler and calls it directly.
   - **200:** the CSV is well-formed. This holds even if every Transfer is Rejected.
+    `line` in the response is the Transfer's Position, named for the person reading the file.
     ```json
     {
       "settled":  [{ "line": 1, "from": "...", "to": "...", "amount": 500.00 }],
@@ -89,9 +98,9 @@ spec/Bank.Api.Specs/
 ## Specs (xUnit v3 4.x + Shouldly)
 
 [ADR 0002](../adr/0002-xunit-and-shouldly-in-place-of-rspec.md) records why these replace RSpec.
-- **Style:** nested classes read like describe/context/it, e.g. `TransferBatchSpec` → `Settle` → `when_the_sender_is_short_but_receives_funds_later` → `it_settles_on_a_later_pass`.
+- **Style:** nested classes read like describe/context/it, e.g. `TransferBatchSpec` → `Settle` → `when_the_sending_account_is_short_but_receives_funds_later` → `it_settles_on_a_later_pass`.
 - **Orthogonal:** each project specifies only its own layer.
-  - **Domain:** pure, no fakes. Value object rules, Account overdraft guard, every rejection reason, deferral and later settlement, knock-on failures, cycles, order-dependence, stopping.
+  - **Domain:** pure, no fakes. Value object rules, Account overdraft guard, every rejection reason and their precedence order, deferral and later settlement, knock-on failures, cycles, order-dependence, stopping.
   - **Application:** parser rows and errors; the command with an in-memory `IAccountRepository` fake, checking that it maps, calls the domain and saves (without re-testing the settlement rules).
   - **Data:** the file repository against a temporary file: round-trip and malformed-file handling.
   - **Api:** `WebApplicationFactory`, in-process, each spec on its own temporary balances file: 200 on the happy path, 400 on a parse error, `GET /accounts`.
