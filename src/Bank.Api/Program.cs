@@ -17,7 +17,7 @@ var app = builder.Build();
 app.Services.GetRequiredService<IAccountRepository>().GetAll();
 
 var endpoints = new Endpoints();
-app.MapPost("/transfer-batches", endpoints.PostTransferBatch).DisableAntiforgery();
+app.MapPost("/transfer-batches", endpoints.PostTransferBatch);
 app.MapGet("/accounts", endpoints.GetAccounts);
 
 app.Run();

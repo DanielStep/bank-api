@@ -6,8 +6,16 @@ namespace Bank.Api;
 
 public class Endpoints
 {
-    public IResult PostTransferBatch(IFormFile file, SettleTransferBatchHandler handler)
+    public async Task<IResult> PostTransferBatch(HttpRequest request, SettleTransferBatchHandler handler)
     {
+        if (!request.HasFormContentType)
+            return Results.BadRequest();
+
+        var form = await request.ReadFormAsync();
+        var file = form.Files.GetFile("file");
+        if (file == null)
+            return Results.BadRequest();
+
         string csv;
         using (var reader = new StreamReader(file.OpenReadStream()))
             csv = reader.ReadToEnd();

@@ -42,13 +42,20 @@ dotnet clean
 
 The copy is made with `PreserveNewest`, so editing the repo's `mable_account_balances.csv` also replaces the working copy on the next build, and the Settled Balances are lost.
 
+## Decisions & Assumptions
+
+- Transfers are settled gross, one at a time and only if the sender holds the full amount at that moment, because
+  net settlement turns into an unfair subset-selection problem once any Account nets negative (see [ADR 0001](docs/adr/0001-gross-multi-pass-settlement.md))
+- Minimal API used on the basis that company is specified to provide the file in some way. Console batch application would be marginally simpler but less usable.
+- Persistance and provision of account balance in csv file for simplicity. Repository pattern used to easily swap in SQLite database.
+- Simplified CQRS pattern used for single responsiblity; no need to a mediator pattern yet.
+
 ## Known limitations
 
-- Uploading the same file again settles it again (no idempotency).
+- Uploading the same file again settles it again (no idempotency). Can be achieved by persisting batch status but deemed beyond scope of exercise.
 - One Company only.
 - One Settlement runs at a time.
-- A `GET /accounts` that arrives while a Settlement is writing the balances file can fail.
-- Outcomes depend on the order of the Transfers in the file (see [ADR 0001](docs/adr/0001-gross-multi-pass-settlement.md)).
+- Outcomes depend on the order of the Transfers in the file.
 
 ## Design
 

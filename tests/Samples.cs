@@ -1,4 +1,4 @@
-namespace Bank.Api.Specs;
+namespace Bank.Specs;
 
 // The contents of mable_account_balances.csv and mable_transactions.csv.
 static class Samples

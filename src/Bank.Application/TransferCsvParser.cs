@@ -18,12 +18,12 @@ public static class TransferCsvParser
         {
             var line = i + 1;
             var fields = lines[i].Split(',');
-            var error = FindError(fields);
+            var error = FindError(fields, out var amount);
 
             if (error != null)
                 errors.Add(new CsvError(line, error));
             else
-                rows.Add(new TransferRow(line, fields[0], fields[1], ParseAmount(fields[2])));
+                rows.Add(new TransferRow(line, fields[0], fields[1], amount));
         }
 
         if (errors.Count > 0)
@@ -32,8 +32,10 @@ public static class TransferCsvParser
         return new ParseResult(rows, errors);
     }
 
-    private static string? FindError(string[] fields)
+    private static string? FindError(string[] fields, out decimal amount)
     {
+        amount = 0;
+
         if (fields.Length != 3)
             return $"Expected 3 fields but found {fields.Length}.";
 
@@ -43,7 +45,7 @@ public static class TransferCsvParser
         if (!AccountNumber.IsValid(fields[1]))
             return $"'{fields[1]}' is not a 16-digit account number.";
 
-        if (!TryParseAmount(fields[2], out var amount))
+        if (!TryParseAmount(fields[2], out amount))
             return $"'{fields[2]}' is not a number.";
 
         if (amount.Scale > 2)
@@ -54,9 +56,6 @@ public static class TransferCsvParser
 
     private static bool TryParseAmount(string text, out decimal amount) =>
         decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out amount);
-
-    private static decimal ParseAmount(string text) =>
-        decimal.Parse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
 
     private static List<string> SplitLines(string text)
     {

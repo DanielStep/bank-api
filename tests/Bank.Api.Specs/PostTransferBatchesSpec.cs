@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Bank.Api.Specs;
@@ -8,15 +9,6 @@ public class PostTransferBatchesSpec
     static async Task<JsonElement> JsonOf(HttpResponseMessage response)
     {
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
-    }
-
-    static List<int> LinesOf(JsonElement list)
-    {
-        var lines = new List<int>();
-        foreach (var item in list.EnumerateArray())
-            lines.Add(item.GetProperty("line").GetInt32());
-
-        return lines;
     }
 
     public class when_the_request_holds_no_file : IAsyncLifetime
@@ -29,6 +21,28 @@ public class PostTransferBatchesSpec
             var form = new MultipartFormDataContent();
             form.Add(new StringContent("nothing"), "note");
             response = await api.CreateClient().PostAsync("/transfer-batches", form);
+        }
+
+        public ValueTask DisposeAsync() => api.DisposeAsync();
+
+        [Fact]
+        public void it_answers_400() =>
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        [Fact]
+        public void it_changes_no_balance() =>
+            File.ReadAllText(api.BalancesPath).ShouldBe(Samples.Balances);
+    }
+
+    public class when_the_request_is_not_a_form : IAsyncLifetime
+    {
+        readonly BankApiFactory api = new(Samples.Balances);
+        HttpResponseMessage response = null!;
+
+        public async ValueTask InitializeAsync()
+        {
+            var body = new StringContent("{}", Encoding.UTF8, "application/json");
+            response = await api.CreateClient().PostAsync("/transfer-batches", body);
         }
 
         public ValueTask DisposeAsync() => api.DisposeAsync();
@@ -68,7 +82,7 @@ public class PostTransferBatchesSpec
 
         [Fact]
         public void it_lists_the_error_with_its_line_number() =>
-            LinesOf(json.GetProperty("errors")).ShouldBe([2]);
+            Json.LinesOf(json.GetProperty("errors")).ShouldBe([2]);
 
         [Fact]
         public void it_changes_no_balance() =>

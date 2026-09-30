@@ -33,14 +33,8 @@ public class SampleFileIntegrationSpec : IAsyncLifetime
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
     [Fact]
-    public void it_settles_all_four_lines_in_order()
-    {
-        var lines = new List<int>();
-        foreach (var transfer in json.GetProperty("settled").EnumerateArray())
-            lines.Add(transfer.GetProperty("line").GetInt32());
-
-        lines.ShouldBe([1, 2, 3, 4]);
-    }
+    public void it_settles_all_four_lines_in_order() =>
+        Json.LinesOf(json.GetProperty("settled")).ShouldBe([1, 2, 3, 4]);
 
     [Fact]
     public void it_rejects_none() =>

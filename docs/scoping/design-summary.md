@@ -150,7 +150,7 @@ How `Settle` runs:
 
 ## Api (Minimal API, no mediator library)
 
-- **`POST /transfer-batches`**: `multipart/form-data` with one CSV file, and `.DisableAntiforgery()`. The endpoint injects the Application handler and calls it directly.
+- **`POST /transfer-batches`**: `multipart/form-data` with one CSV file. The endpoint injects the Application handler and calls it directly.
   - **200:** the CSV is well-formed. This holds even if every Transfer is Rejected.
     `line` in the response is the Transfer's Position, named for the person reading the file.
     ```json

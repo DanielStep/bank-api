@@ -12,10 +12,15 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
+    <Using Include="Bank.Specs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bank.Data\Bank.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Samples.cs" Link="Samples.cs" />
   </ItemGroup>
 
 </Project>

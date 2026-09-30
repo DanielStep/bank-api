@@ -16,4 +16,6 @@ public readonly record struct Money
     public Money Add(Money other) => new(Value + other.Value);
 
     public Money Subtract(Money other) => new(Value - other.Value);
+
+    public bool IsLessThan(Money other) => Value < other.Value;
 }

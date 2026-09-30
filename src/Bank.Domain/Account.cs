@@ -14,7 +14,7 @@ public class Account
 
     public bool TryWithdraw(Money amount)
     {
-        if (amount.Value > Balance.Value)
+        if (Balance.IsLessThan(amount))
             return false;
 
         Balance = Balance.Subtract(amount);

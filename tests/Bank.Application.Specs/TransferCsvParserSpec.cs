@@ -2,18 +2,9 @@ namespace Bank.Application.Specs;
 
 public class TransferCsvParserSpec
 {
-    // The lines of mable_transactions.csv.
-    static readonly string[] SampleLines =
-    [
-        "1111234522226789,1212343433335665,500.00",
-        "3212343433335755,2222123433331212,1000.00",
-        "3212343433335755,1111234522226789,320.50",
-        "1111234522221234,1212343433335665,25.60"
-    ];
-
     public class when_the_file_is_well_formed
     {
-        readonly ParseResult result = TransferCsvParser.Parse(string.Join("\n", SampleLines) + "\n");
+        readonly ParseResult result = TransferCsvParser.Parse(Samples.Transfers);
 
         [Fact]
         public void it_gives_one_row_per_line_numbered_from_1() =>
@@ -38,7 +29,7 @@ public class TransferCsvParserSpec
         [InlineData("\r\n", false)]
         public void it_accepts_either_line_ending(string ending, bool endsWithOne)
         {
-            var csv = string.Join(ending, SampleLines);
+            var csv = Samples.Transfers.TrimEnd('\n').Replace("\n", ending);
             if (endsWithOne)
                 csv += ending;
 

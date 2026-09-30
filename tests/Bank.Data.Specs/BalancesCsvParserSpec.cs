@@ -4,19 +4,9 @@ namespace Bank.Data.Specs;
 
 public class BalancesCsvParserSpec
 {
-    // The lines of mable_account_balances.csv.
-    static readonly string[] SampleLines =
-    [
-        "1111234522226789,5000.00",
-        "1111234522221234,10000.00",
-        "2222123433331212,550.00",
-        "1212343433335665,1200.00",
-        "3212343433335755,50000.00"
-    ];
-
     public class when_the_file_is_well_formed
     {
-        readonly Accounts accounts = BalancesCsvParser.Parse(string.Join("\n", SampleLines) + "\n");
+        readonly Accounts accounts = BalancesCsvParser.Parse(Samples.Balances);
 
         [Fact]
         public void it_gives_every_account_in_file_order() =>
@@ -31,7 +21,7 @@ public class BalancesCsvParserSpec
         [InlineData("\n")]
         [InlineData("\r\n")]
         public void it_accepts_either_line_ending(string ending) =>
-            BalancesCsvParser.Parse(string.Join(ending, SampleLines) + ending).All.Count.ShouldBe(5);
+            BalancesCsvParser.Parse(Samples.Balances.Replace("\n", ending)).All.Count.ShouldBe(5);
     }
 
     public class when_a_line_is_malformed
