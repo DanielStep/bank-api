@@ -44,11 +44,11 @@ The copy is made with `PreserveNewest`, so editing the repo's `mable_account_bal
 
 ## Decisions & Assumptions
 
-- Transfers are settled gross, one at a time and only if the sender holds the full amount at that moment, because
+- Transfers are settled gross (one at a time and only if the sender holds the full amount at that moment) because
   net settlement turns into an unfair subset-selection problem once any Account nets negative (see [ADR 0001](docs/adr/0001-gross-multi-pass-settlement.md))
 - Minimal API used on the basis that company is specified to provide the file in some way. Console batch application would be marginally simpler but less usable.
 - Persistance and provision of account balance in csv file for simplicity. Repository pattern used to easily swap in SQLite database.
-- Simplified CQRS pattern used for single responsiblity; no need to a mediator pattern yet.
+- Simplified CQRS pattern used to encapulate application logic with single responsbility; no need for a mediator pattern yet.
 
 ## Known limitations
 
@@ -59,4 +59,4 @@ The copy is made with `PreserveNewest`, so editing the repo's `mable_account_bal
 
 ## Design
 
-The agreed design is in [docs/scoping/design-summary.md](docs/scoping/design-summary.md), the domain language in [docs/CONTEXT.md](docs/CONTEXT.md), and the architecture decisions in [docs/adr](docs/adr).
+The design and scoping is in [docs/scoping/design-summary.md](docs/scoping/design-summary.md), the domain language in [docs/CONTEXT.md](docs/CONTEXT.md), and the architecture decisions in [docs/adr](docs/adr).
