@@ -179,6 +179,12 @@ Related files:
 | Q32 | Glossary gaps | Review found terms used but undefined. Final (recommended): **added Sending Account, Receiving Account, Pass and Rejection Reason to CONTEXT.md.** Domain properties are `SendingAccount` and `ReceivingAccount`; `from`/`to` stay only in the CSV parser and the JSON, as the file's words. "Cycle" is avoided for a Pass because ADR 0001 uses it for Transfers that loop (A→B→A). "For a single day" stays in Transfer Batch as the business meaning; the README's known limitations cover re-posting. |
 | Q33 | What `Settle` returns | User: **a named `SettlementResult`** holding the Settled Transfers (in settle order), the Rejected Transfers with reasons, and the updated Accounts. |
 
+### Round 6: planning the OpenSpec change
+
+| # | Question | Decision |
+|---|---|---|
+| Q34 | The status of a valid Transfer before its first Pass | Review found that `TransferStatus` (Settled, Deferred, Rejected) had no state for a Transfer that has passed `Create`'s checks but not yet been tried. User: **replace Deferred with Unsettled.** A Transfer that passes `Create` starts Unsettled, stays Unsettled when its Sending Account is short, and is Rejected as `InsufficientFunds` if it is still Unsettled when Settlement stops. CONTEXT.md, the design summary and ADR 0001 were updated to match. |
+
 ## Worked check: sample files
 
 All four sample Transfers Settle on pass 1.

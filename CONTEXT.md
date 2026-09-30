@@ -52,9 +52,9 @@ _Avoid_: Iteration, round, cycle
 A Transfer whose amount has moved from its Sending Account to its Receiving Account.
 _Avoid_: Completed, applied, succeeded
 
-**Deferred**:
-A Transfer that could not be settled yet and will be retried later in the same Settlement.
-_Avoid_: Pending, queued, failed
+**Unsettled**:
+A Transfer that is not yet Settled or Rejected. Each Pass tries it again until Settlement stops.
+_Avoid_: Deferred, pending, queued, failed
 
 **Rejected**:
 A Transfer that will never move any money, together with the reason it was refused.

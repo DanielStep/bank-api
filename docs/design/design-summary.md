@@ -59,14 +59,14 @@ spec/Bank.Api.Specs/
  │   sending.TryWithdraw(Amount)       │                   │ 0..*
  │    true  → receiving.Deposit        │                   ▼
  │            → Settled                │  ┌──────────────────────────────────┐
- │    false → Deferred                 │─►│ Account  (entity)                │
+ │    false → stays Unsettled          │─►│ Account  (entity)                │
  └──────┬──────────────────────────────┘  │  Number  : AccountNumber         │
         │                                 │  Balance : Money                 │
         ▼                                 │  TryWithdraw(Money) → bool       │
  ┌─────────────────────────────┐          │   false if Balance would go < $0 │
  │ TransferStatus              │          │  Deposit(Money)                  │
  │  Settled                    │          └──────┬────────────────────┬──────┘
- │  Deferred                   │                 ▼                    ▼
+ │  Unsettled (from Create)    │                 ▼                    ▼
  │  Rejected(RejectionReason)  │   ┌────────────────────┐ ┌─────────────────────┐
  └──────┬──────────────────────┘   │ AccountNumber (VO) │ │ Money (VO)          │
         ▼                          │  string, 16 digits │ │  decimal, ≥ 0, ≤ 2dp│
@@ -88,9 +88,9 @@ How `Settle` runs:
    Rejected at Create?        → skip, and report as Rejected
    Find(Sending) is null      → Rejected(UnknownSendingAccount)
    Find(Receiving) is null    → Rejected(UnknownReceivingAccount)
-   else SettleBetween(...)    → Settled | Deferred
+   else SettleBetween(...)    → Settled | stays Unsettled
 
- Pass 2..n: retry the Deferred Transfers, in Position order
+ Pass 2..n: retry the Unsettled Transfers, in Position order
  Stop when a Pass settles nothing → the rest are Rejected(InsufficientFunds)
 ```
 
@@ -106,7 +106,7 @@ How `Settle` runs:
     1. `NonPositiveAmount`: the requested amount is ≤ 0.
     2. `SameAccount`: the Sending and Receiving Account are the same.
   - Otherwise the Transfer also holds the amount as `Money`. That `Money` is only created once the amount is known to be positive, so it can't fail.
-  - The Transfer owns its status. `SettleBetween(sending, receiving)` calls `sending.TryWithdraw(amount)`: on success it deposits to the Receiving Account and becomes **Settled**; otherwise it becomes **Deferred**.
+  - The Transfer owns its status. `SettleBetween(sending, receiving)` calls `sending.TryWithdraw(amount)`: on success it deposits to the Receiving Account and becomes **Settled**; otherwise it stays **Unsettled**. A Transfer that passes `Create`'s checks starts **Unsettled**.
 - **`Accounts`**: the Company's Accounts, backed by a `Dictionary<AccountNumber, Account>`.
   - The constructor refuses a list that holds the same Account number twice.
   - `Find(AccountNumber)` returns the Account, or null when it's unknown.
@@ -114,9 +114,9 @@ How `Settle` runs:
   - **Pass 1** walks the Transfers in order.
     - Already Rejected at creation → skipped, and reported with the other Rejected Transfers.
     - `accounts.Find` returns null for the Sending Account → **Rejected** (`UnknownSendingAccount`); otherwise null for the Receiving Account → **Rejected** (`UnknownReceivingAccount`). Never retried.
-    - Otherwise the batch calls `transfer.SettleBetween(sending, receiving)`, which Settles or Defers it. The batch never reads a Balance itself.
-  - **Later passes** retry the Deferred Transfers in their original order.
-  - Settlement **stops** when a pass settles nothing. Anything still Deferred is Rejected as `InsufficientFunds`.
+    - Otherwise the batch calls `transfer.SettleBetween(sending, receiving)`, which Settles it or leaves it Unsettled. The batch never reads a Balance itself.
+  - **Later passes** retry the Unsettled Transfers in their original order.
+  - Settlement **stops** when a pass settles nothing. Anything still Unsettled is Rejected as `InsufficientFunds`.
   - **Returns a `SettlementResult`:**
     - `Settled`: the Settled Transfers, in the order they settled.
     - `Rejected`: the Rejected Transfers, each with its Rejection Reason.
@@ -168,7 +168,7 @@ How `Settle` runs:
 [ADR 0002](../adr/0002-xunit-and-shouldly-in-place-of-rspec.md) records why these replace RSpec.
 - **Style:** nested classes read like describe/context/it, e.g. `TransferBatchSpec` → `Settle` → `when_the_sending_account_is_short_but_receives_funds_later` → `it_settles_on_a_later_pass`.
 - **Orthogonal:** each project specifies only its own layer.
-  - **Domain:** pure, no fakes. Value object rules, Account overdraft guard, every rejection reason and their precedence order, deferral and later settlement, knock-on failures, cycles, order-dependence, stopping.
+  - **Domain:** pure, no fakes. Value object rules, Account overdraft guard, every rejection reason and their precedence order, retrying Unsettled Transfers and later settlement, knock-on failures, cycles, order-dependence, stopping.
   - **Application:** parser rows and errors; the command with an in-memory `IAccountRepository` fake, checking that it maps, calls the domain and saves (without re-testing the settlement rules).
   - **Data:** the file repository against a temporary file: round-trip and malformed-file handling.
   - **Api:** `WebApplicationFactory`, in-process, each spec on its own temporary balances file: 200 on the happy path, 400 on a parse error, `GET /accounts`.
@@ -192,6 +192,19 @@ How `Settle` runs:
   - One Company only.
   - One settlement runs at a time.
   - Outcomes depend on file order (see ADR 0001).
+
+## Delivery plan
+
+The work is delivered as one OpenSpec change. Its `tasks.md` has four task groups, in this order, and each group lands its own specs:
+
+| # | Task group | Covers |
+|---|---|---|
+| 1 | Domain | `BankApi.slnx` and `global.json` from the [Solution layout](#solution-layout), then [Domain](#domain-written-first-test-first): value objects, `Account`, `Accounts`, `Transfer`, `TransferBatch`, `SettlementResult`, `IAccountRepository`, and the domain specs. Test-first. |
+| 2 | Application | [Application](#application): `TransferCsvParser`, the settle command and get-accounts query with their handlers, and the Application specs. |
+| 3 | Data | [Data](#data): `FileAccountRepository`, copying the balances CSV into the build output, and the Data specs. |
+| 4 | Api and README | [Api](#api-minimal-api-no-mediator-library): both endpoints and hosting, the Api specs, the headline acceptance spec, and the [README](#readme-contents). |
+
+Each group adds only its own layer's `src/` and `spec/` projects to the solution.
 
 ## Before building
 
