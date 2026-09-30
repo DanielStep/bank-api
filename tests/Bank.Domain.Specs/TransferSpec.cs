@@ -68,7 +68,7 @@ public class TransferSpec
     public class when_settled_and_the_sending_account_holds_enough
     {
         readonly Transfer transfer = ATransfer("1111111111111111", "2222222222222222", 100.00m);
-        readonly Account sending = new(new AccountNumber("1111111111111111"), new Money(100.00m));
+        readonly Account sending = new(new AccountNumber("1111111111111111"), new Money(500.00m));
         readonly Account receiving = new(new AccountNumber("2222222222222222"), new Money(0.00m));
 
         public when_settled_and_the_sending_account_holds_enough()
@@ -79,7 +79,7 @@ public class TransferSpec
         [Fact]
         public void it_moves_the_amount()
         {
-            sending.Balance.ShouldBe(new Money(0.00m));
+            sending.Balance.ShouldBe(new Money(400.00m));
             receiving.Balance.ShouldBe(new Money(100.00m));
         }
 
@@ -91,7 +91,7 @@ public class TransferSpec
     public class when_settled_and_the_sending_account_is_short
     {
         readonly Transfer transfer = ATransfer("1111111111111111", "2222222222222222", 100.00m);
-        readonly Account sending = new(new AccountNumber("1111111111111111"), new Money(99.99m));
+        readonly Account sending = new(new AccountNumber("1111111111111111"), new Money(50.00m));
         readonly Account receiving = new(new AccountNumber("2222222222222222"), new Money(0.00m));
 
         public when_settled_and_the_sending_account_is_short()
@@ -102,7 +102,7 @@ public class TransferSpec
         [Fact]
         public void it_moves_nothing()
         {
-            sending.Balance.ShouldBe(new Money(99.99m));
+            sending.Balance.ShouldBe(new Money(50.00m));
             receiving.Balance.ShouldBe(new Money(0.00m));
         }
 

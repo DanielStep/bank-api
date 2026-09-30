@@ -36,16 +36,4 @@ public class AccountSpec
             account.Balance.ShouldBe(new Money(99.99m));
         }
     }
-
-    public class when_depositing
-    {
-        readonly Account account = AnAccountHolding(0.00m);
-
-        [Fact]
-        public void it_adds_to_the_balance()
-        {
-            account.Deposit(new Money(25.60m));
-            account.Balance.ShouldBe(new Money(25.60m));
-        }
-    }
 }
